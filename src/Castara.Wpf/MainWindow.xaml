@@ -14,7 +14,7 @@
         ResizeMode="CanResize"
         Background="#1B1F22">
 
-    <!-- Window Chrome -->
+    <!-- WindowChrome enables custom title bar while keeping normal resize + caption behavior -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="44"
                             ResizeBorderThickness="7"
@@ -23,11 +23,47 @@
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-
     <Window.Resources>
 
-        <!-- Min / Max button -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground"
+            Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+
+        <Style TargetType="Label">
+            <Setter Property="Foreground"
+            Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground"
+            Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground"
+            Value="{DynamicResource MaterialDesignBody}" />
+        </Style>
+        
+
+        <!-- =========================================================
+             Caption button hover/pressed brushes (NO hex-with-alpha in triggers)
+             ========================================================= -->
+
+        <!-- Subtle hover/pressed for minimize/max/restore -->
+        <SolidColorBrush x:Key="CaptionHoverBrush"   Color="#268A8A8A"/>
+        <SolidColorBrush x:Key="CaptionPressedBrush" Color="#30909090"/>
+
+        <!-- Close button hover/pressed (Windows-like) -->
+        <SolidColorBrush x:Key="CaptionCloseHoverBrush"   Color="#E81123"/>
+        <SolidColorBrush x:Key="CaptionClosePressedBrush" Color="#C50F1F"/>
+
+        <!-- =========================================================
+             Caption Buttons
+             ========================================================= -->
+
         <Style x:Key="CaptionButtonStyle" TargetType="Button">
+            <!-- Important: keep arrow cursor, not hand -->
             <Setter Property="Cursor" Value="Arrow"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -39,69 +75,56 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg"
-                                Background="Transparent">
+                        <Border x:Name="Bg" Background="Transparent">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Border>
 
                         <ControlTemplate.Triggers>
-
-                            <!-- Ultra-subtle hover -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
-                                        Value="#168A8A8A"/>
+                                        Value="{StaticResource CaptionHoverBrush}"/>
                             </Trigger>
-
-                            <!-- Gentle pressed -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
-                                        Value="#25909090"/>
+                                        Value="{StaticResource CaptionPressedBrush}"/>
                             </Trigger>
-
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
                             </Trigger>
-
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- Close button -->
         <Style x:Key="CaptionCloseButtonStyle"
                TargetType="Button"
                BasedOn="{StaticResource CaptionButtonStyle}">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg"
-                                Background="Transparent">
+                        <Border x:Name="Bg" Background="Transparent">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Border>
 
                         <ControlTemplate.Triggers>
-
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
-                                        Value="#E81123"/>
+                                        Value="{StaticResource CaptionCloseHoverBrush}"/>
                             </Trigger>
-
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
-                                        Value="#C50F1F"/>
+                                        Value="{StaticResource CaptionClosePressedBrush}"/>
                             </Trigger>
-
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
                             </Trigger>
-
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -110,22 +133,23 @@
 
     </Window.Resources>
 
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="44"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="36"/>
         </Grid.RowDefinitions>
 
-
-        <!-- ==========================================================
+        <!-- =========================
              TITLE BAR
-             ========================================================== -->
+             ========================= -->
         <Border Grid.Row="0"
                 Background="#1F262A"
                 BorderBrush="#2E363B"
                 BorderThickness="0,0,0,1">
 
+            <!-- mouse down allows drag/move (code-behind handles double click to maximize) -->
             <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -133,7 +157,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Logo -->
+                <!-- App mark -->
                 <Image Width="64"
                        Height="64"
                        Margin="0,0,0,0"
@@ -141,7 +165,7 @@
                        RenderOptions.BitmapScalingMode="HighQuality"
                        Source="pack://application:,,,/Resources/castara_logo_64.png"/>
 
-                <!-- Title -->
+                <!-- App title -->
                 <TextBlock Grid.Column="1"
                            Text="CASTARA"
                            FontSize="17"
@@ -149,7 +173,7 @@
                            VerticalAlignment="Center"
                            Foreground="#F0F0F0"/>
 
-                <!-- Caption Buttons -->
+                <!-- Caption buttons -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
@@ -183,152 +207,107 @@
                     </Button>
 
                 </StackPanel>
-
             </Grid>
         </Border>
 
+        <!-- =========================
+             TOP TOOLBAR (Light/Dark toggle)
+             ========================= -->
+        <materialDesign:ColorZone Grid.Row="1"
+                                  Mode="PrimaryDark"
+                                  Padding="16">
 
-        <!-- ==========================================================
-             APP BODY
-             ========================================================== -->
-        <Grid Grid.Row="1">
-            <materialDesign:DrawerHost>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- LEFT NAV -->
-                <materialDesign:DrawerHost.LeftDrawerContent>
-                    <DockPanel Width="260">
+                <TextBlock Text="Workbench"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Opacity="0.9"/>
 
-                        <StackPanel Margin="16">
-                            <TextBlock Text="Castara"
-                                       FontSize="22"
-                                       FontWeight="SemiBold"/>
-                            <TextBlock Text="Cast Iron Analysis"
-                                       Opacity="0.7"/>
-                        </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
 
-                        <Separator/>
+                    <TextBlock Text="Light"
+                               Foreground="#F0F0F0"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               Opacity="0.9"/>
 
-                        <ListBox Margin="8"
-                                 SelectedItem="{Binding SelectedNavItem}"
-                                 Style="{StaticResource MaterialDesignNavigationListBox}">
-                            <ListBoxItem Content="Dashboard" Tag="Dashboard"/>
-                            <ListBoxItem Content="Composition Profiles" Tag="CompositionProfiles"/>
-                            <ListBoxItem Content="Iron Calculations" Tag="IronCalculations"/>
-                            <ListBoxItem Content="Quality Risks" Tag="QualityRisks"/>
-                        </ListBox>
+                    <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                  IsChecked="{Binding IsDarkMode}"
+                                  VerticalAlignment="Center"/>
 
-                    </DockPanel>
-                </materialDesign:DrawerHost.LeftDrawerContent>
+                    <TextBlock Text="Dark"
+                               Foreground="#F0F0F0"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Opacity="0.9"/>
+                </StackPanel>
+            </Grid>
+        </materialDesign:ColorZone>
 
-
-                <!-- MAIN -->
-                <DockPanel LastChildFill="True">
-
-                    <!-- TOP TOOLBAR -->
-                    <materialDesign:ColorZone DockPanel.Dock="Top"
-                                              Mode="PrimaryDark"
-                                              Padding="16">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Button Style="{StaticResource MaterialDesignToolButton}"
-                                    Command="{x:Static materialDesign:DrawerHost.OpenDrawerCommand}">
-                                <materialDesign:PackIcon Kind="Menu" Width="24" Height="24"/>
-                            </Button>
-
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding PageTitle}"
-                                       FontSize="18"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"
-                                       Margin="16,0,0,0"/>
-
-                            <!-- Light / Dark -->
-                            <StackPanel Grid.Column="2"
-                                        Orientation="Horizontal"
-                                        VerticalAlignment="Center">
-
-                                <TextBlock Text="Light"
-                                           Foreground="#F0F0F0"
-                                           Margin="0,0,8,0"
-                                           VerticalAlignment="Center"
-                                           Opacity="0.9"/>
-
-                                <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                              IsChecked="{Binding IsDarkMode}"
-                                              VerticalAlignment="Center"/>
-
-                                <TextBlock Text="Dark"
-                                           Foreground="#F0F0F0"
-                                           Margin="8,0,0,0"
-                                           VerticalAlignment="Center"
-                                           Opacity="0.9"/>
-
-                            </StackPanel>
-                        </Grid>
-                    </materialDesign:ColorZone>
-
-
-                    <!-- STATUS BAR (anchored) -->
-                    <Border DockPanel.Dock="Bottom"
-                            Height="36"
-                            Padding="12,6"
-                            BorderBrush="#0B0E10"
-                            BorderThickness="0,1,0,0">
-
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#1A2024" Offset="0"/>
-                                <GradientStop Color="#14181B" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Text="{Binding StatusLeftText}"
-                                       Foreground="#D6D6D6"
-                                       VerticalAlignment="Center"/>
-
-                            <Border Grid.Column="1"
-                                    CornerRadius="14"
-                                    Padding="10,4"
-                                    Background="#0F1316"
-                                    BorderBrush="#2A2A2A"
-                                    BorderThickness="1"
-                                    VerticalAlignment="Center">
-
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Circle"
-                                                             Width="12"
-                                                             Height="12"
-                                                             Margin="0,0,8,0"
-                                                             Foreground="{Binding StatusBrush}"/>
-                                    <TextBlock Text="{Binding StatusRightText}"
-                                               Foreground="#D6D6D6"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-
-                            </Border>
-                        </Grid>
-                    </Border>
-
-
-                    <!-- CONTENT -->
-                    <Grid Margin="24">
-                        <ContentControl Content="{Binding CurrentView}"/>
-                    </Grid>
-
-                </DockPanel>
-            </materialDesign:DrawerHost>
+        <!-- =========================
+             CONTENT
+             ========================= -->
+        <Grid Grid.Row="2" Margin="20">
+            <ContentControl Content="{Binding CurrentView}"/>
         </Grid>
+
+        <!-- =========================
+             STATUS BAR (anchored bottom)
+             ========================= -->
+        <Border Grid.Row="3"
+                Height="36"
+                Padding="12,6"
+                BorderBrush="#0B0E10"
+                BorderThickness="0,1,0,0">
+
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#1A2024" Offset="0"/>
+                    <GradientStop Color="#14181B" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding StatusLeftText}"
+                           Foreground="#D6D6D6"
+                           VerticalAlignment="Center"/>
+
+                <Border Grid.Column="1"
+                        CornerRadius="14"
+                        Padding="10,4"
+                        Background="#0F1316"
+                        BorderBrush="#2A2A2A"
+                        BorderThickness="1"
+                        VerticalAlignment="Center">
+
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Circle"
+                                                 Width="12"
+                                                 Height="12"
+                                                 Margin="0,0,8,0"
+                                                 Foreground="{Binding StatusBrush}"/>
+
+                        <TextBlock Text="{Binding StatusRightText}"
+                                   Foreground="#D6D6D6"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+            </Grid>
+        </Border>
 
     </Grid>
 </Window>

@@ -5,26 +5,32 @@
 
     <Application.Resources>
         <ResourceDictionary>
+
             <ResourceDictionary.MergedDictionaries>
 
-                <!-- Base defaults (required) -->
+                <!-- Material Design 3 defaults (required) -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
 
-                <!-- Light theme base (you can toggle base theme in code later) -->
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
-
-                <!-- Optional: add only what you use to keep startup snappy -->
+                <!-- Component dictionaries you actually use -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Button.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.TextBox.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ListBox.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ComboBox.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ToggleButton.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Card.xaml" />
-                <!-- Color theme -->
-                <materialDesign:BundledTheme
-                    BaseTheme="Dark"
-                    PrimaryColor="BlueGrey"
-                    SecondaryColor="Amber" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ListBox.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ScrollViewer.xaml" />
+
+                <!-- Your bundled theme (this sets initial base + primary/secondary) -->
+                <materialDesign:BundledTheme BaseTheme="Dark"
+                                             PrimaryColor="BlueGrey"
+                                             SecondaryColor="Amber" />
 
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- App-level dynamic foreground that follows the theme (Light=dark text, Dark=light text) -->
+            <SolidColorBrush x:Key="AppForegroundBrush"
+                             Color="{DynamicResource MaterialDesignBody}" />
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

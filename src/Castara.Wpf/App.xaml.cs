@@ -1,4 +1,5 @@
-﻿using Castara.Wpf.Services.Navigation;
+﻿using Castara.Domain.Estimation.Services;
+using Castara.Wpf.Services.Navigation;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
 using Castara.Wpf.ViewModels;
@@ -28,13 +29,12 @@ public partial class App : System.Windows.Application
     {
         services.AddSingleton<IStatusService, StatusService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<ICastIronEstimator, CastIronEstimator>();
         services.AddSingleton<ThemeService>();
-        services.AddSingleton<ShellViewModel>();
-        services.AddSingleton<DashboardView>();
-        services.AddSingleton<ProfilesView>();
-        services.AddSingleton<CalculationsView>();
-        services.AddSingleton<RiskFlagsView>();
-        services.AddSingleton<SettingsView>();
         services.AddSingleton<MainWindow>();
+        services.AddSingleton<ShellViewModel>();
+        services.AddSingleton<CalculationsView>();
+        services.AddSingleton<CalculationsViewModel>();
+        services.AddSingleton<ICastIronEstimator, CastIronEstimator>();
     }
 }
