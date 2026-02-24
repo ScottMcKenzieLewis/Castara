@@ -25,4 +25,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Composition\" />
+    <Folder Include="Estimation\Models\" />
+    <Folder Include="Estimation\Services\" />
+  </ItemGroup>
+
 </Project>

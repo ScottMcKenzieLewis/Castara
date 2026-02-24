@@ -4,8 +4,8 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="Castara"
-        Width="1400"
-        Height="900"
+        Width="1200"
+        Height="780"
         Icon="pack://application:,,,/Resources/castara_logo.ico"
         WindowStartupLocation="CenterScreen"
         TextElement.FontFamily="Segoe UI Variable"
@@ -35,14 +35,15 @@
             Value="{DynamicResource MaterialDesignBody}" />
         </Style>
 
-        <Style TargetType="TextBox">
-            <Setter Property="Foreground"
-            Value="{DynamicResource MaterialDesignBody}" />
+        <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
+            <Setter Property="Padding" Value="10,6" />
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Foreground"
-            Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
         </Style>
         
 

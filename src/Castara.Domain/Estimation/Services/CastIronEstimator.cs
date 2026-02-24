@@ -16,7 +16,10 @@ public sealed class CastIronEstimator : ICastIronEstimator
         SectionGuards.Validate(section);
 
         var ce = ComputeCarbonEquivalent(c);
-        var coolingFactor = ComputeCoolingFactor(section.CoolingRate);
+
+        // Stage 2: continuous input in °C/s
+        var coolingFactor = ComputeCoolingFactor(section.CoolingRateCPerSec);
+
         var thicknessFactor = ComputeThicknessFactor(section.ThicknessMm);
 
         var graphScore = ComputeGraphitizationScore(ce, coolingFactor, thicknessFactor);
@@ -40,14 +43,47 @@ public sealed class CastIronEstimator : ICastIronEstimator
     private static double ComputeCarbonEquivalent(CastIronComposition c)
         => c.Carbon + (c.Silicon + c.Phosphorus) / 3.0;
 
-    private static double ComputeCoolingFactor(CoolingRate rate)
-        => rate switch
-        {
-            CoolingRate.Slow => -0.15,
-            CoolingRate.Normal => 0.0,
-            CoolingRate.Fast => 0.20,
-            _ => 0.0
-        };
+    /// <summary>
+    /// Convert a continuous cooling rate (°C/s) into the same coolingFactor scale the model already uses.
+    /// This preserves your previous enum behavior approximately:
+    ///  - ~0.1 °C/s  -> -0.15 (like Slow)
+    ///  - ~1.0 °C/s  ->  0.00 (like Normal)
+    ///  - ~10  °C/s  -> +0.20 (like Fast)
+    /// </summary>
+    private static double ComputeCoolingFactor(double coolingRateCPerSec)
+    {
+        // Guard rails: avoid log(0) and tame crazy inputs.
+        var r = Math.Clamp(coolingRateCPerSec, 0.02, 50.0);
+
+        // Map log10(rate) into a factor via piecewise linear interpolation.
+        // Anchors picked to match your old discrete values.
+        const double rSlow = 0.1;   // °C/s
+        const double fSlow = -0.15;
+
+        const double rNorm = 1.0;   // °C/s
+        const double fNorm = 0.00;
+
+        const double rFast = 10.0;  // °C/s
+        const double fFast = 0.20;
+
+        double x = Math.Log10(r);
+
+        double xSlow = Math.Log10(rSlow);
+        double xNorm = Math.Log10(rNorm);
+        double xFast = Math.Log10(rFast);
+
+        if (x <= xNorm)
+            return Lerp(xSlow, fSlow, xNorm, fNorm, x);
+
+        return Lerp(xNorm, fNorm, xFast, fFast, x);
+    }
+
+    private static double Lerp(double x0, double y0, double x1, double y1, double x)
+    {
+        if (Math.Abs(x1 - x0) < 1e-12) return y0;
+        var t = (x - x0) / (x1 - x0);
+        return y0 + t * (y1 - y0);
+    }
 
     private static double ComputeThicknessFactor(double thicknessMm)
         => (CastIronEstimationConstants.ThicknessPivotMm - thicknessMm) / CastIronEstimationConstants.ThicknessScale;

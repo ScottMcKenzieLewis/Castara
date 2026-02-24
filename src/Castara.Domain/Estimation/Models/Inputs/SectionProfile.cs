@@ -2,4 +2,4 @@
 
 public sealed record SectionProfile(
     double ThicknessMm,
-    CoolingRate CoolingRate);
+    double CoolingRateCPerSec);

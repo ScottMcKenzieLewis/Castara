@@ -14,6 +14,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
     private readonly ThemeService _themeService;
     private readonly IStatusService _statusService;
+    private readonly CalculationsViewModel _calculationsViewModel; // <-- add
 
     public ShellViewModel(
         ThemeService themeService,
@@ -23,10 +24,9 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     {
         _themeService = themeService;
         _statusService = statusService;
+        _calculationsViewModel = calculationsViewModel; // <-- add
 
-        // Ensure the view actually has something to bind to at runtime
         calculationsView.DataContext = calculationsViewModel;
-
         CurrentView = calculationsView;
 
         _statusService.PropertyChanged += (_, e) =>
@@ -40,9 +40,35 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         };
 
         IsDarkMode = true;
+
+        // Make sure BOTH theme systems are aligned at startup:
         _themeService.SetDark(true);
+        _calculationsViewModel.SetTheme(true); // <-- add
 
         _statusService.Set(AppStatusLevel.Ok, "Ready", "SQLite • Local");
+    }
+
+    // -----------------------------
+    // Theme toggle
+    // -----------------------------
+    private bool _isDarkMode;
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (_isDarkMode == value) return;
+
+            _isDarkMode = value;
+
+            // Update MaterialDesign theme
+            _themeService.SetDark(value);
+
+            // Update OxyPlot theme in the calculations VM
+            _calculationsViewModel.SetTheme(value); // <-- add
+
+            Notify(nameof(IsDarkMode));
+        }
     }
 
     // -----------------------------
@@ -58,24 +84,6 @@ public sealed class ShellViewModel : INotifyPropertyChanged
             if (Equals(_currentView, value)) return;
             _currentView = value;
             Notify(nameof(CurrentView));
-        }
-    }
-
-    // -----------------------------
-    // Theme toggle
-    // -----------------------------
-
-    private bool _isDarkMode;
-    public bool IsDarkMode
-    {
-        get => _isDarkMode;
-        set
-        {
-            if (_isDarkMode == value) return;
-
-            _isDarkMode = value;
-            _themeService.SetDark(value);
-            Notify(nameof(IsDarkMode));
         }
     }
 
