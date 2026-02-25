@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path="castara.runsettings" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="src/Castara.Application/Castara.Application.csproj" Id="74e4a6bd-c01d-40b7-aa36-5c4ca61f21cc" />
   <Project Path="src/Castara.Domain/Castara.Domain.csproj" />

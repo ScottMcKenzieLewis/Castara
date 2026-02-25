@@ -41,14 +41,85 @@ Castara helps metallurgists and engineers analyze cast iron compositions by:
 - **WPF** (.NET 8) - Modern desktop UI framework
 - **Material Design in XAML** - Material Design components and theming
 - **OxyPlot** - Advanced charting and data visualization
-- **Caliburn.Micro** (likely) - MVVM framework
 
 ### Architecture
 - **MVVM Pattern** - Clean separation of concerns
 - **Domain-Driven Design** - Rich domain models and services
 - **Dependency Injection** - Loosely coupled components
 
-## Project Structure
+### Solution Structure
+
+```
+Castara/
+├── src/
+│   ├── Castara.Domain/                   # Domain Layer (Active)
+│   │   ├── Composition/                  # Chemical composition models
+│   │   │   ├── CastIronComposition.cs    # Composition value object
+│   │   │   └── CompositionGuards.cs      # Validation logic
+│   │   │
+│   │   └── Estimation/                   # Estimation services
+│   │       ├── Models/
+│   │       │   ├── Inputs/               # Input models
+│   │       │   │   ├── CastIronInputs.cs
+│   │       │   │   └── SectionProfile.cs
+│   │       │   │
+│   │       │   └── Outputs/              # Output models
+│   │       │       ├── CastIronEstimate.cs
+│   │       │       ├── HardnessRange.cs
+│   │       │       ├── RiskFlag.cs
+│   │       │       └── RiskSeverity.cs
+│   │       │
+│   │       ├── Services/                 # Domain services
+│   │       │   ├── ICastIronEstimator.cs
+│   │       │   ├── CastIronEstimator.cs
+│   │       │   └── CastIronEstimationConstants.cs
+│   │       │
+│   │       └── Validation/               # Business rule validation
+│   │           └── SectionGuards.cs
+│   │
+│   ├── Castara.Wpf/                      # Presentation Layer (Active)
+│   │   ├── Views/
+│   │   │   ├── CalculationsView.xaml
+│   │   │   └── CalculationsView.xaml.cs
+│   │   │
+│   │   ├── ViewModels/
+│   │   │   ├── ShellViewModel.cs
+│   │   │   └── CalculationsViewModel.cs
+│   │   │
+│   │   ├── Infrastructure/
+│   │   │   ├── Commands/
+│   │   │   │   └── RelayCommand.cs
+│   │   │   └── Converters/
+│   │   │       └── RiskSeverityToBrushConverter.cs
+│   │   │
+│   │   ├── Services/
+│   │   │   ├── Status/
+│   │   │   │   ├── IStatusService.cs
+│   │   │   │   └── StatusService.cs
+│   │   │   └── Theme/
+│   │   │       └── ThemeService.cs
+│   │   │
+│   │   ├── Models/
+│   │   │   ├── AppStatusLevel.cs
+│   │   │   └── StatusState.cs
+│   │   │
+│   │   ├── MainWindow.xaml
+│   │   ├── MainWindow.xaml.cs
+│   │   ├── App.xaml
+│   │   └── App.xaml.cs
+│   │
+│   ├── Castara.Application/              # Application Layer (Staged)
+│   │   └── [Reserved for future CQRS/Mediator patterns]
+│   │
+│   └── Castara.Infrastructure/           # Infrastructure Layer (Staged)
+│       └── [Reserved for future persistence and external services]
+│
+├── tests/                                # Test projects (Future)
+├── Castara.sln                           # Solution file
+└── README.md
+```
+
+The Castara solution follows a clean architecture approach with clear separation of concerns:
 
 1. **Castara.sln** - Solution file
 2. **Castara/** - Main application project
@@ -201,6 +272,57 @@ For issues, questions, or contributions, please visit:
 ---
 
 **Note**: This application provides estimates based on empirical models and should not be used as the sole basis for critical metallurgical decisions. Always consult with qualified metallurgists and perform appropriate testing.
+
+### Active Projects
+
+#### **Castara.Domain**
+The core business logic layer containing:
+- **Composition Models**: Chemical composition value objects and validation
+- **Estimation Services**: Metallurgical calculation algorithms
+- **Domain Models**: Input/output models for cast iron analysis
+- **Business Rules**: Guards and validators for domain integrity
+
+This layer has no dependencies on UI or infrastructure concerns and can be unit tested independently.
+
+#### **Castara.Wpf**
+The WPF presentation layer containing:
+- **Views**: XAML user interface definitions
+- **ViewModels**: Presentation logic following MVVM pattern
+- **Services**: UI-specific services (theming, status management)
+- **Infrastructure**: Commands, value converters, helpers
+- **Application Bootstrap**: Dependency injection configuration
+
+This layer depends on Castara.Domain for business logic but is independent of data access concerns.
+
+### Staged Projects
+
+#### **Castara.Application** (Future)
+Reserved for application layer concerns:
+- Command/Query handlers (CQRS pattern)
+- Application services and orchestration
+- Use case implementations
+- DTOs and mapping profiles
+
+This layer will mediate between the presentation and domain layers, coordinating complex workflows.
+
+#### **Castara.Infrastructure** (Future)
+Reserved for infrastructure concerns:
+- Database repositories and Entity Framework Core
+- External service integrations (stock inventory service)
+- File system operations (profile persistence)
+- Logging and monitoring
+
+This layer will implement persistence and external communication needs identified in the TODO/Roadmap.
+
+### Design Principles
+
+The solution follows these architectural principles:
+
+1. **Dependency Direction**: Dependencies flow inward toward the domain
+2. **Separation of Concerns**: Each project has a single, well-defined responsibility
+3. **Testability**: Core domain logic is isolated and easily testable
+4. **Extensibility**: Staged projects provide clear extension points for future features
+5. **SOLID Principles**: Interface-based design with dependency injection
 
 
 
