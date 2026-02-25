@@ -63,14 +63,10 @@ Castara helps metallurgists and engineers analyze cast iron compositions by:
 
 ### Installation
 
-1. **Clone the repository**
-   git clone https://github.com/ScottMcKenzieLewis/Castara.git cd Castara
-2. **Restore NuGet packages**
-   dotnet restore
-3. **Build the solution**
-   dotnet build
-4. **Run the application**
-   dotnet run --project src/Castara.Wpf
+1. **Clone the repository** - git clone https://github.com/ScottMcKenzieLewis/Castara.git cd Castara
+2. **Restore NuGet packages** - dotnet restore
+3. **Build the solution** - dotnet build
+4. **Run the application** - dotnet run --project src/Castara.Wpf
 
 ## Usage
 
@@ -145,6 +141,12 @@ Each flag includes:
 - **Name**: Human-readable description
 - **Message**: Detailed explanation
 - **Severity**: Critical, Warning, or Info
+
+## TODO / Roadmap
+
+### Planned Features
+- [ ] **Stock Inventory Integration** - Constrain composition inputs to feed from stock inventory service, ensuring accuracy and traceability to available materials
+- [ ] **Profile Persistence** - Allow saving of section profiles and composition data to database for historical tracking and analysis
 
 ## Contributing
 
