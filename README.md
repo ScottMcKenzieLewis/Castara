@@ -60,7 +60,7 @@ Castara helps metallurgists and engineers analyze cast iron compositions by:
 ```
 Castara/
 ├── src/
-│   ├── Castara.Domain/                    # Domain Layer (Active)
+│   ├── Castara.Domain/                   # Domain Layer (Active)
 │   │   ├── Composition/                  # Chemical composition models
 │   │   │   ├── CastIronComposition.cs    # Composition value object
 │   │   │   └── CompositionGuards.cs      # Validation logic
