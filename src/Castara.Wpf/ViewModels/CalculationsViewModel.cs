@@ -9,7 +9,7 @@ using Castara.Domain.Composition;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
-
+using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
@@ -47,7 +47,7 @@ namespace Castara.Wpf.ViewModels;
 /// shell view model when the application theme changes.
 /// </para>
 /// </remarks>
-public sealed class CalculationsViewModel : INotifyPropertyChanged
+public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware
 {
     private readonly IStatusService _status;
     private readonly ICastIronEstimator _estimator;
@@ -225,7 +225,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         UpdateCompositionPlot();
         UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
 
-        _status.Set(AppStatusLevel.Ok, "Ready", "SQLite • Local");
+        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
     }
 
     // -----------------------------
@@ -593,7 +593,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
     {
         Result = null;
         UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
-        _status.Set(AppStatusLevel.Ok, "Ready", "SQLite • Local");
+        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
     }
 
     // -----------------------------

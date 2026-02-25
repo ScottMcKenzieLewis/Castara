@@ -23,7 +23,7 @@ namespace Castara.Wpf.Services.Theme;
 /// container to ensure consistent theming across all views and components.
 /// </para>
 /// </remarks>
-public sealed class ThemeService
+public sealed class ThemeService : IThemeService
 {
     /// <summary>
     /// The Material Design palette helper used to manipulate theme settings.
@@ -33,7 +33,7 @@ public sealed class ThemeService
     /// <summary>
     /// Sets the application theme to dark or light mode.
     /// </summary>
-    /// <param name="dark">
+    /// <param name="isDark">
     /// <c>true</c> to enable dark theme; <c>false</c> to enable light theme.
     /// </param>
     /// <remarks>
@@ -67,12 +67,12 @@ public sealed class ThemeService
     /// themeService.SetDark(false);
     /// </code>
     /// </example>
-    public void SetDark(bool dark)
+    public void SetDark(bool isDark)
     {
         var theme = _paletteHelper.GetTheme();
 
         theme.SetBaseTheme(
-            dark
+            isDark
                 ? BaseTheme.Dark
                 : BaseTheme.Light);
 

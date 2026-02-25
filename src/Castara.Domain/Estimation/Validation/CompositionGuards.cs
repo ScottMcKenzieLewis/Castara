@@ -1,4 +1,6 @@
-﻿namespace Castara.Domain.Composition;
+﻿using Castara.Domain.Composition;
+
+namespace Castara.Domain.Estimation.Validation;
 
 /// <summary>
 /// Provides validation guards for <see cref="CastIronComposition"/> instances to ensure

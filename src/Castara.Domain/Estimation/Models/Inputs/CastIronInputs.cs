@@ -24,7 +24,7 @@ namespace Castara.Domain.Estimation.Models.Inputs;
 /// <strong>Validation:</strong> Input validation is performed automatically during
 /// the estimation process using:
 /// <list type="bullet">
-///   <item><description><see cref="Castara.Domain.Composition.CompositionGuards"/> for chemical composition</description></item>
+///   <item><description><see cref="Validation.CompositionGuards"/> for chemical composition</description></item>
 ///   <item><description><see cref="Validation.SectionGuards"/> for section parameters</description></item>
 /// </list>
 /// </para>

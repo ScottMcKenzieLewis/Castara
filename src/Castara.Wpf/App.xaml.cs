@@ -1,9 +1,11 @@
 ﻿using Castara.Domain.Estimation.Services;
+using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
 using Castara.Wpf.ViewModels;
 using Castara.Wpf.Views;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Windows;
 
 namespace Castara.Wpf;
@@ -56,7 +58,9 @@ public partial class App : System.Windows.Application
 
         _services = services.BuildServiceProvider();
 
+        var shellVm = _services.GetRequiredService<ShellViewModel>();
         var window = _services.GetRequiredService<MainWindow>();
+        window.DataContext = shellVm;
         window.Show();
     }
 
@@ -78,7 +82,7 @@ public partial class App : System.Windows.Application
     /// <strong>Infrastructure Services:</strong>
     /// <list type="bullet">
     ///   <item><description><see cref="IStatusService"/> - Application-wide status and notification management</description></item>
-    ///   <item><description><see cref="ThemeService"/> - Material Design theme switching and customization</description></item>
+    ///   <item><description><see cref="IThemeService"/> - Material Design theme switching and customization</description></item>
     /// </list>
     /// </para>
     /// <para>
@@ -102,12 +106,14 @@ public partial class App : System.Windows.Application
 
         // Infrastructure Services
         services.AddSingleton<IStatusService, StatusService>();
-        services.AddSingleton<ThemeService>();
+        services.AddSingleton<IThemeService, ThemeService>();
+
 
         // Presentation Services
         services.AddSingleton<MainWindow>();
         services.AddSingleton<ShellViewModel>();
-        services.AddSingleton<CalculationsView>();
-        services.AddSingleton<CalculationsViewModel>();
+        services.AddSingleton<CalculationsViewModel>(); // or AddTransient; either is fine
+        services.AddSingleton<IThemeAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
+
     }
 }

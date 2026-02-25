@@ -43,9 +43,8 @@ public partial class CalculationsView : UserControl
     /// enabling data binding between the XAML and the view model's properties and commands.
     /// This constructor-based injection ensures the view always has a valid view model instance.
     /// </remarks>
-    public CalculationsView(CalculationsViewModel vm)
+    public CalculationsView()
     {
         InitializeComponent();
-        DataContext = vm;
     }
 }

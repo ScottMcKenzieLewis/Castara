@@ -1,4 +1,6 @@
-﻿namespace Castara.Domain.Composition;
+﻿using Castara.Domain.Estimation.Validation;
+
+namespace Castara.Domain.Composition;
 
 /// <summary>
 /// Represents the chemical composition of cast iron, defining the weight percentages
