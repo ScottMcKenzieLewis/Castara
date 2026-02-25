@@ -10,6 +10,7 @@
         WindowStartupLocation="CenterScreen"
         TextElement.FontFamily="Segoe UI Variable"
         TextElement.FontSize="14"
+        WindowState="Maximized"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="#1B1F22">
