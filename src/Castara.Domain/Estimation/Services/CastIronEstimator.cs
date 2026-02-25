@@ -37,6 +37,8 @@ public sealed class CastIronEstimator : ICastIronEstimator
             CarbonEquivalent: Math.Round(ce, 3),
             GraphitizationScore: Math.Round(graphScore, 3),
             EstimatedHardness: hardness,
+            CoolingFactor: Math.Round(coolingFactor, 3),
+            ThicknessFactor: Math.Round(thicknessFactor, 3),
             Flags: flags);
     }
 

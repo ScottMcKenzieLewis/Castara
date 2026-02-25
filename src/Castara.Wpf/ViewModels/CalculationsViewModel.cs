@@ -48,6 +48,14 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
     private const double CoolingRateTypicalMin = 0.05;
     private const double CoolingRateTypicalMax = 20.0;
 
+    public string CoolingFactorText => Result is null
+    ? "—"
+    : Result.CoolingFactor.ToString("0.000", CultureInfo.InvariantCulture);
+
+    public string ThicknessFactorText => Result is null
+        ? "—"
+        : Result.ThicknessFactor.ToString("0.000", CultureInfo.InvariantCulture);
+
     public string CarbonTooltip =>
     $"Carbon (C), wt%.\nValid range: {CarbonMin:0.##} – {CarbonMax:0.##}.";
 
@@ -104,6 +112,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(Sulfur));
         OnPropertyChanged(nameof(ThicknessMm));
         OnPropertyChanged(nameof(CoolingRateCPerSec));
+        OnPropertyChanged(nameof(CoolingFactorText));
+        OnPropertyChanged(nameof(ThicknessFactorText));
 
         // Seed charts with defaults (before first calc)
         UpdateCompositionPlot();
@@ -182,6 +192,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CarbonEquivalentText));
             OnPropertyChanged(nameof(GraphitizationScoreText));
             OnPropertyChanged(nameof(HardnessText));
+            OnPropertyChanged(nameof(CoolingFactorText));
+            OnPropertyChanged(nameof(ThicknessFactorText));
             OnPropertyChanged(nameof(Flags));
         }
     }

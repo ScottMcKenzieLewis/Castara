@@ -257,7 +257,9 @@
              CONTENT
              ========================= -->
         <Grid Grid.Row="2" Margin="20">
-            <ContentControl Content="{Binding CurrentView}"/>
+            <ContentControl Content="{Binding CurrentView}"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"/>
         </Grid>
 
         <!-- =========================

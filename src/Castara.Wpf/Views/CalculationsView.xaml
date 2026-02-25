@@ -1,7 +1,6 @@
 ﻿<!-- ===============================
      Castara.Wpf.Views
      CalculationsView.xaml
-     (refactored: tooltips next to labels, NO binding / UpdateSourceTrigger changes)
      =============================== -->
 
 <UserControl x:Class="Castara.Wpf.Views.CalculationsView"
@@ -65,19 +64,17 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Carbon (C)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-            Margin="6,0,0,0"
-            VerticalAlignment="Center"
-            ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding CarbonTooltip}" />
+                                    <ToolTip Content="{Binding CarbonTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding Carbon, UpdateSourceTrigger=PropertyChanged}"
@@ -88,19 +85,17 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Phosphorus (P)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-            Margin="6,0,0,0"
-            VerticalAlignment="Center"
-            ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding PhosphorusTooltip}" />
+                                    <ToolTip Content="{Binding PhosphorusTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding Phosphorus, UpdateSourceTrigger=PropertyChanged}"
@@ -111,19 +106,17 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Silicon (Si)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-Margin="6,0,0,0"
-VerticalAlignment="Center"
-ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding SiliconTooltip}" />
+                                    <ToolTip Content="{Binding SiliconTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding Silicon, UpdateSourceTrigger=PropertyChanged}"
@@ -134,19 +127,17 @@ ToolTipService.IsEnabled="True">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Sulfur (S)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-Margin="6,0,0,0"
-VerticalAlignment="Center"
-ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding SulfurTooltip}" />
+                                    <ToolTip Content="{Binding SulfurTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding Sulfur, UpdateSourceTrigger=PropertyChanged}"
@@ -157,19 +148,17 @@ ToolTipService.IsEnabled="True">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Manganese (Mn)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-Margin="6,0,0,0"
-VerticalAlignment="Center"
-ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding ManganeseTooltip}" />
+                                    <ToolTip Content="{Binding ManganeseTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding Manganese, UpdateSourceTrigger=PropertyChanged}"
@@ -193,19 +182,17 @@ ToolTipService.IsEnabled="True">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Thickness (mm)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-Margin="6,0,0,0"
-VerticalAlignment="Center"
-ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding ThicknessTooltip}" />
+                                    <ToolTip Content="{Binding ThicknessTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     />
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding ThicknessMm, UpdateSourceTrigger=PropertyChanged}"
@@ -216,19 +203,17 @@ ToolTipService.IsEnabled="True">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Cooling Rate (°C/s)" FontSize="12" Opacity="0.7"/>
                             <Border Background="Transparent"
-Margin="6,0,0,0"
-VerticalAlignment="Center"
-ToolTipService.IsEnabled="True">
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTipService.IsEnabled="True">
                                 <Border.ToolTip>
-                                    <ToolTip Content="{Binding CoolingRateTooltip}" />
+                                    <ToolTip Content="{Binding CoolingRateTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                     Width="14"
-                                                     Height="14"
-                                                     Margin="6,0,0,0"
-                                                     Opacity="0.65"
-                                                     VerticalAlignment="Center"
-                                                     ToolTip="{Binding CoolingRateTooltip}"/>
+                                                         Width="14"
+                                                         Height="14"
+                                                         Opacity="0.65"
+                                                         IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
                         <TextBox Text="{Binding CoolingRateCPerSec, UpdateSourceTrigger=PropertyChanged}"
@@ -258,10 +243,19 @@ ToolTipService.IsEnabled="True">
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="16"/>
+                <!-- KPIs -->
+                <RowDefinition Height="12"/>
+                <!-- spacer -->
                 <RowDefinition Height="Auto"/>
+                <!-- Model Inputs -->
                 <RowDefinition Height="16"/>
+                <!-- spacer -->
+                <RowDefinition Height="Auto"/>
+                <!-- Charts -->
+                <RowDefinition Height="16"/>
+                <!-- spacer -->
                 <RowDefinition Height="*"/>
+                <!-- Flags -->
             </Grid.RowDefinitions>
 
             <!-- KPIs -->
@@ -299,8 +293,65 @@ ToolTipService.IsEnabled="True">
                 </UniformGrid>
             </materialDesign:Card>
 
-            <!-- CHARTS -->
+            <!-- MODEL INPUTS -->
             <materialDesign:Card Grid.Row="2"
+                                 Padding="14"
+                                 UniformCornerRadius="10"
+                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                <StackPanel>
+                    <TextBlock Text="Model Inputs"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource MaterialDesignBody}"
+                               Margin="0,0,0,10"/>
+
+                    <UniformGrid Columns="3">
+                        <StackPanel>
+                            <TextBlock Text="Carbon Eq."
+                                       Opacity="0.7"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <TextBlock Text="{Binding CarbonEquivalentText}"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock Text="Cooling Factor"
+                                       Opacity="0.7"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding CoolingFactorText}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MaterialDesignBody}"/>
+                                <TextBlock Text="  ("
+                                           Opacity="0.8"
+                                           Foreground="{DynamicResource MaterialDesignBody}"/>
+                                <TextBlock Text="{Binding CoolingRateCPerSec}"
+                                           Opacity="0.8"
+                                           Foreground="{DynamicResource MaterialDesignBody}"/>
+                                <TextBlock Text=" °C/s)"
+                                           Opacity="0.8"
+                                           Foreground="{DynamicResource MaterialDesignBody}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock Text="Thickness Factor"
+                                       Opacity="0.7"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <TextBlock Text="{Binding ThicknessFactorText}"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- CHARTS -->
+            <materialDesign:Card Grid.Row="4"
                                  Padding="18"
                                  UniformCornerRadius="10"
                                  Background="{DynamicResource MaterialDesignCardBackground}">
@@ -311,7 +362,6 @@ ToolTipService.IsEnabled="True">
                         <ColumnDefinition Width="360"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Composition bar chart -->
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Composition (wt%)"
                                    FontSize="14"
@@ -330,7 +380,6 @@ ToolTipService.IsEnabled="True">
                         </Border>
                     </StackPanel>
 
-                    <!-- Gauges -->
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Gauges"
                                    FontSize="14"
@@ -345,7 +394,6 @@ ToolTipService.IsEnabled="True">
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <!-- Graphitization donut -->
                             <Border CornerRadius="10"
                                     Padding="12"
                                     Background="{DynamicResource MaterialDesignPaper}"
@@ -375,7 +423,6 @@ ToolTipService.IsEnabled="True">
                                 </Grid>
                             </Border>
 
-                            <!-- Hardness donut -->
                             <Border Grid.Row="2"
                                     CornerRadius="10"
                                     Padding="12"
@@ -411,10 +458,13 @@ ToolTipService.IsEnabled="True">
             </materialDesign:Card>
 
             <!-- FLAGS -->
-            <materialDesign:Card Grid.Row="4"
+            <materialDesign:Card Grid.Row="6"
                                  Padding="18"
                                  UniformCornerRadius="10"
-                                 Background="{DynamicResource MaterialDesignCardBackground}">
+                                 Background="{DynamicResource MaterialDesignCardBackground}"
+                                 VerticalAlignment="Stretch"
+                                 HorizontalContentAlignment="Stretch"
+                                 VerticalContentAlignment="Stretch">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -429,8 +479,10 @@ ToolTipService.IsEnabled="True">
                                Foreground="{DynamicResource MaterialDesignBody}"/>
 
                     <ScrollViewer Grid.Row="2"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                                  VerticalAlignment="Stretch"
+                                  VerticalScrollBarVisibility="Visible"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  CanContentScroll="False">
                         <ItemsControl ItemsSource="{Binding Flags}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
