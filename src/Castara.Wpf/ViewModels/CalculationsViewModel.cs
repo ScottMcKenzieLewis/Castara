@@ -62,7 +62,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         "Section thickness in millimeters.\nValid range: > 0 mm.";
 
     public string CoolingRateTooltip =>
-        $"Cooling rate in °C/s (continuous).\nValid range: > 0 °C/s.\nTypical casting guidance: {CastIronInputConstraints.CoolingRateTypicalMin:0.##} – {CastIronInputConstraints.CoolingRateTypicalMax:0.##} °C/s.";
+        $"Cooling rate in °C/s (continuous).\nValid range: > 0 °C/s.\nTypical casting guidance: {CastIronInputConstraints.CoolingRateMin:0.##} – {CastIronInputConstraints.CoolingRateMax:0.##} °C/s.";
 
     // ---------------------------------------
     // Field helpers (raw text + validation)
@@ -93,7 +93,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         _phosphorusField = NumericTextField.Range("Phosphorus", CastIronInputConstraints.PhosphorusMin, CastIronInputConstraints.PhosphorusMax);
         _sulfurField = NumericTextField.Range("Sulfur", CastIronInputConstraints.SulfurMin, CastIronInputConstraints.SulfurMax);
         _thicknessField = NumericTextField.MinPositive("Thickness", CastIronInputConstraints.ThicknessMinMm);
-        _coolingField = NumericTextField.Range("Cooling rate", CastIronInputConstraints.CoolingRateMinCPerSec, CastIronInputConstraints.CoolingRateTypicalMax);
+        _coolingField = NumericTextField.Range("Cooling rate", CastIronInputConstraints.CoolingRateMinCPerSec, CastIronInputConstraints.CoolingRateMax);
 
         _fieldByProperty = new()
         {

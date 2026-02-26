@@ -80,7 +80,7 @@ public static class CastIronInputConstraints
     /// Typical minimum cooling rate in degrees Celsius per second.
     /// This is guidance only and not used for validation.
     /// </summary>
-    public const double CoolingRateTypicalMin = 0.05;
+    public const double CoolingRateMin = 0.05;
 
     /// <summary>
     /// Maximum cooling rate in degrees Celsius per second.
