@@ -13,20 +13,24 @@ namespace Castara.Domain.Tests.Estimation.Services;
 
 /// <summary>
 /// Property-based tests for <see cref="CastIronEstimator"/>.
-//
-// These tests verify estimator invariants across a wide range
-// of automatically generated valid metallurgical inputs.
-//
-// This complements deterministic unit tests by stress-testing:
-//
-// • Numerical stability
-// • Physical invariants
-// • Guard correctness
-// • Output constraints
-//
-// This style of testing is common in engineering-grade software
-// where calculations must remain stable across a large input space.
-// </summary>
+/// </summary>
+/// <remarks>
+/// These tests verify estimator invariants across a wide range
+/// of automatically generated valid metallurgical inputs.
+/// <para>
+/// This complements deterministic unit tests by stress-testing:
+/// </para>
+/// <list type="bullet">
+/// <item><description>Numerical stability</description></item>
+/// <item><description>Physical invariants</description></item>
+/// <item><description>Guard correctness</description></item>
+/// <item><description>Output constraints</description></item>
+/// </list>
+/// <para>
+/// This style of testing is common in engineering-grade software
+/// where calculations must remain stable across a large input space.
+/// </para>
+/// </remarks>
 public sealed class CastIronEstimatorPropertyTests
 {
     private readonly CastIronEstimator _sut = new();
@@ -88,8 +92,9 @@ public sealed class CastIronEstimatorPropertyTests
     // ============================================================
 
     /// <summary>
-    /// Graphitization score must always be in [0,1].
+    /// Verifies that graphitization score is always constrained to the unit interval [0,1].
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void GraphitizationScore_IsAlwaysUnitInterval(CastIronInputs inputs)
     {
@@ -99,8 +104,9 @@ public sealed class CastIronEstimatorPropertyTests
     }
 
     /// <summary>
-    /// Hardness range must always be ordered.
+    /// Verifies that hardness range is always ordered (min ≤ max).
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void HardnessRange_IsAlwaysOrdered(CastIronInputs inputs)
     {
@@ -110,9 +116,13 @@ public sealed class CastIronEstimatorPropertyTests
     }
 
     /// <summary>
-    /// Carbon equivalent must be within bounds derived from input constraints.
-    /// CE = C + (Si + P)/3 should respect the min/max of each component.
+    /// Verifies that carbon equivalent is within bounds derived from input constraints.
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
+    /// <remarks>
+    /// Carbon equivalent (CE) = C + (Si + P)/3 should respect the min/max of each component
+    /// based on the constraints defined in <see cref="CastIronInputConstraints"/>.
+    /// </remarks>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void CarbonEquivalent_IsWithinConstraintDerivedBounds(CastIronInputs inputs)
     {
@@ -133,8 +143,9 @@ public sealed class CastIronEstimatorPropertyTests
     }
 
     /// <summary>
-    /// Estimator must be deterministic.
+    /// Verifies that the estimator produces deterministic results for identical inputs.
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void Estimator_IsDeterministic(CastIronInputs inputs)
     {
@@ -153,8 +164,13 @@ public sealed class CastIronEstimatorPropertyTests
     // ============================================================
 
     /// <summary>
-    /// Increasing cooling rate must not increase graphitization.
+    /// Verifies that increasing cooling rate decreases or maintains graphitization score.
     /// </summary>
+    /// <param name="rate1">First cooling rate.</param>
+    /// <param name="rate2">Second cooling rate.</param>
+    /// <remarks>
+    /// This tests the metallurgical principle that faster cooling suppresses graphite formation.
+    /// </remarks>
     [Property]
     public void FasterCooling_DecreasesGraphitization(
         double rate1,
@@ -177,8 +193,13 @@ public sealed class CastIronEstimatorPropertyTests
     }
 
     /// <summary>
-    /// Faster cooling should not reduce hardness.
+    /// Verifies that faster cooling increases or maintains hardness.
     /// </summary>
+    /// <param name="rate1">First cooling rate.</param>
+    /// <param name="rate2">Second cooling rate.</param>
+    /// <remarks>
+    /// This tests the metallurgical principle that faster cooling promotes harder microstructures.
+    /// </remarks>
     [Property]
     public void FasterCooling_IncreasesHardness(
         double rate1,
@@ -203,8 +224,9 @@ public sealed class CastIronEstimatorPropertyTests
     // ============================================================
 
     /// <summary>
-    /// Estimator must never throw for valid inputs.
+    /// Verifies that the estimator never throws exceptions for valid inputs.
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void Estimator_NeverThrows_ForValidInputs(
         CastIronInputs inputs)
@@ -215,8 +237,9 @@ public sealed class CastIronEstimatorPropertyTests
     }
 
     /// <summary>
-    /// Estimator must never produce NaN or Infinity.
+    /// Verifies that all output values are finite (not NaN or infinity).
     /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
     [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
     public void Outputs_AreAlwaysFinite(CastIronInputs inputs)
     {
@@ -228,16 +251,48 @@ public sealed class CastIronEstimatorPropertyTests
         Assert.True(double.IsFinite(e.ThicknessFactor));
     }
 
+    /// <summary>
+    /// Verifies that small input changes produce proportionally small output changes (Lipschitz continuity).
+    /// </summary>
+    /// <param name="inputs">Randomly generated valid cast iron inputs.</param>
+    /// <remarks>
+    /// This tests numerical stability by ensuring the estimator doesn't exhibit chaotic behavior
+    /// or extreme sensitivity to minor input perturbations.
+    /// </remarks>
+    [Property(Arbitrary = new[] { typeof(CastIronEstimatorPropertyTests) })]
+    public void SmallInputChanges_ProduceSmallOutputChanges(
+        CastIronInputs inputs)
+    {
+        var e1 = _sut.Estimate(inputs);
+
+        var perturbed = new CastIronInputs(
+            new CastIronComposition(
+                inputs.Composition.Carbon + 0.01,
+                inputs.Composition.Silicon,
+                inputs.Composition.Manganese,
+                inputs.Composition.Phosphorus,
+                inputs.Composition.Sulfur),
+            inputs.Section);
+
+        var e2 = _sut.Estimate(perturbed);
+
+        Assert.True(
+            Math.Abs(e1.CarbonEquivalent - e2.CarbonEquivalent) < 0.05);
+    }
+
     // ============================================================
     // Helpers
     // ============================================================
 
     /// <summary>
     /// Creates typical cast iron inputs with the specified cooling rate.
-    /// Uses a standard composition (C: 3.4%, Si: 2.1%, Mn: 0.55%, P: 0.05%, S: 0.02%).
     /// </summary>
     /// <param name="coolingRate">The cooling rate in °C/s.</param>
     /// <returns>A typical cast iron input configuration.</returns>
+    /// <remarks>
+    /// Uses a standard gray iron composition: C: 3.4%, Si: 2.1%, Mn: 0.55%, P: 0.05%, S: 0.02%,
+    /// with a section thickness of 12 mm.
+    /// </remarks>
     private static CastIronInputs TypicalInputs(double coolingRate)
         => new(
             new CastIronComposition(
@@ -251,7 +306,7 @@ public sealed class CastIronEstimatorPropertyTests
                 coolingRate));
 
     /// <summary>
-    /// Clamps a value to the specified range, handling NaN and infinity.
+    /// Clamps a value to the specified range, handling NaN and infinity by returning the minimum.
     /// </summary>
     /// <param name="v">The value to clamp.</param>
     /// <param name="min">The minimum allowed value.</param>
