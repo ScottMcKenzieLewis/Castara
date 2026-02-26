@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Castara.Wpf\Castara.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Castara.Wpf\Castara.Wpf.csproj" />
   </ItemGroup>
 
   <ItemGroup>

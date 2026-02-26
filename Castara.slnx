@@ -6,7 +6,7 @@
   <Project Path="src/Castara.Application/Castara.Application.csproj" Id="74e4a6bd-c01d-40b7-aa36-5c4ca61f21cc" />
   <Project Path="src/Castara.Domain/Castara.Domain.csproj" />
   <Project Path="src/Castara.Infrastructure/Castara.Infrastructure.csproj" Id="e7c19aaf-f47c-4495-8e43-4a97929f651b" />
-  <Project Path="src/Castara.Wpf.Tests/Castara.Wpf.Tests.csproj" Id="3fa98e93-f0af-4773-85ff-4d3f1d745a2a" />
   <Project Path="src/Castara.Wpf/Castara.Wpf.csproj" Id="208ad7a0-6a89-4754-8157-b2e459c57657" />
   <Project Path="tests/Castara.Domain.Tests/Castara.Domain.Tests.csproj" />
+  <Project Path="tests/Castara.Wpf.Tests/Castara.Wpf.Tests.csproj" />
 </Solution>
