@@ -74,11 +74,11 @@ public static class CompositionGuards
     public static void Validate(CastIronComposition c)
     {
         // Keep ranges broad; we're not doing certified metallurgy
-        RequireRange(c.Carbon, 0.0, 5.0, nameof(c.Carbon));
-        RequireRange(c.Silicon, 0.0, 5.0, nameof(c.Silicon));
-        RequireRange(c.Manganese, 0.0, 3.0, nameof(c.Manganese));
-        RequireRange(c.Phosphorus, 0.0, 1.0, nameof(c.Phosphorus));
-        RequireRange(c.Sulfur, 0.0, 1.0, nameof(c.Sulfur));
+        RequireRange(c.Carbon, CastIronInputConstraints.CarbonMin, CastIronInputConstraints.CarbonMax, nameof(c.Carbon));
+        RequireRange(c.Silicon, CastIronInputConstraints.SiliconMin, CastIronInputConstraints.SiliconMin, nameof(c.Silicon));
+        RequireRange(c.Manganese, CastIronInputConstraints.ManganeseMin, CastIronInputConstraints.ManganeseMax, nameof(c.Manganese));
+        RequireRange(c.Phosphorus, CastIronInputConstraints.PhosphorusMin, CastIronInputConstraints.PhosphorusMax, nameof(c.Phosphorus));
+        RequireRange(c.Sulfur, CastIronInputConstraints.SulfurMin, CastIronInputConstraints.SulfurMax, nameof(c.Sulfur));
     }
 
     /// <summary>

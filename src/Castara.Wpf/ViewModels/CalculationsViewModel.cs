@@ -1,6 +1,7 @@
 ﻿using Castara.Domain.Composition;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
+using Castara.Domain.Estimation.Validation;
 using Castara.Domain.Estimation.Services;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
@@ -25,29 +26,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    // ---------------------------------------
-    // Ranges
-    // ---------------------------------------
-    private const double CarbonMin = 0.0;
-    private const double CarbonMax = 5.0;
 
-    private const double SiliconMin = 0.0;
-    private const double SiliconMax = 5.0;
-
-    private const double ManganeseMin = 0.0;
-    private const double ManganeseMax = 3.0;
-
-    private const double PhosphorusMin = 0.0;
-    private const double PhosphorusMax = 1.0;
-
-    private const double SulfurMin = 0.0;
-    private const double SulfurMax = 1.0;
-
-    private const double ThicknessMinMm = 0.0001;
-    private const double CoolingRateMinCPerSec = 0.0001;
-
-    private const double CoolingRateTypicalMin = 0.05;
-    private const double CoolingRateTypicalMax = 20.0;
 
     // ---------------------------------------
     // Numeric canonical values (domain uses these)
@@ -65,25 +44,25 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     // Tooltips (your XAML binds to these)
     // ---------------------------------------
     public string CarbonTooltip =>
-        $"Carbon (C), wt%.\nValid range: {CarbonMin:0.##} – {CarbonMax:0.##}.";
+        $"Carbon (C), wt%.\nValid range: {CastIronInputConstraints.CarbonMin:0.##} – {CastIronInputConstraints.CarbonMax:0.##}.";
 
     public string SiliconTooltip =>
-        $"Silicon (Si), wt%.\nValid range: {SiliconMin:0.##} – {SiliconMax:0.##}.";
+        $"Silicon (Si), wt%.\nValid range: {CastIronInputConstraints.SiliconMin:0.##} – {CastIronInputConstraints.SiliconMax:0.##}.";
 
     public string ManganeseTooltip =>
-        $"Manganese (Mn), wt%.\nValid range: {ManganeseMin:0.##} – {ManganeseMax:0.##}.";
+        $"Manganese (Mn), wt%.\nValid range: {CastIronInputConstraints.ManganeseMin:0.##} – {CastIronInputConstraints.ManganeseMax:0.##}.";
 
     public string PhosphorusTooltip =>
-        $"Phosphorus (P), wt%.\nValid range: {PhosphorusMin:0.##} – {PhosphorusMax:0.##}.";
+        $"Phosphorus (P), wt%.\nValid range: {CastIronInputConstraints.PhosphorusMin:0.##} – {CastIronInputConstraints.PhosphorusMax:0.##}.";
 
     public string SulfurTooltip =>
-        $"Sulfur (S), wt%.\nValid range: {SulfurMin:0.##} – {SulfurMax:0.##}.";
+        $"Sulfur (S), wt%.\nValid range: {CastIronInputConstraints.SulfurMin:0.##} – {CastIronInputConstraints.SulfurMax:0.##}.";
 
     public string ThicknessTooltip =>
         "Section thickness in millimeters.\nValid range: > 0 mm.";
 
     public string CoolingRateTooltip =>
-        $"Cooling rate in °C/s (continuous).\nValid range: > 0 °C/s.\nTypical casting guidance: {CoolingRateTypicalMin:0.##} – {CoolingRateTypicalMax:0.##} °C/s.";
+        $"Cooling rate in °C/s (continuous).\nValid range: > 0 °C/s.\nTypical casting guidance: {CastIronInputConstraints.CoolingRateTypicalMin:0.##} – {CastIronInputConstraints.CoolingRateTypicalMax:0.##} °C/s.";
 
     // ---------------------------------------
     // Field helpers (raw text + validation)
@@ -108,13 +87,13 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         ClearCommand = new RelayCommand(Clear);
 
         // Define fields + rules once
-        _carbonField = NumericTextField.Range("Carbon", CarbonMin, CarbonMax);
-        _siliconField = NumericTextField.Range("Silicon", SiliconMin, SiliconMax);
-        _manganeseField = NumericTextField.Range("Manganese", ManganeseMin, ManganeseMax);
-        _phosphorusField = NumericTextField.Range("Phosphorus", PhosphorusMin, PhosphorusMax);
-        _sulfurField = NumericTextField.Range("Sulfur", SulfurMin, SulfurMax);
-        _thicknessField = NumericTextField.MinPositive("Thickness", ThicknessMinMm);
-        _coolingField = NumericTextField.MinPositive("Cooling rate", CoolingRateMinCPerSec);
+        _carbonField = NumericTextField.Range("Carbon", CastIronInputConstraints.CarbonMin, CastIronInputConstraints.CarbonMax);
+        _siliconField = NumericTextField.Range("Silicon", CastIronInputConstraints.SiliconMin, CastIronInputConstraints.SiliconMax);
+        _manganeseField = NumericTextField.Range("Manganese", CastIronInputConstraints.ManganeseMin, CastIronInputConstraints.ManganeseMax);
+        _phosphorusField = NumericTextField.Range("Phosphorus", CastIronInputConstraints.PhosphorusMin, CastIronInputConstraints.PhosphorusMax);
+        _sulfurField = NumericTextField.Range("Sulfur", CastIronInputConstraints.SulfurMin, CastIronInputConstraints.SulfurMax);
+        _thicknessField = NumericTextField.MinPositive("Thickness", CastIronInputConstraints.ThicknessMinMm);
+        _coolingField = NumericTextField.Range("Cooling rate", CastIronInputConstraints.CoolingRateMinCPerSec, CastIronInputConstraints.CoolingRateTypicalMax);
 
         _fieldByProperty = new()
         {
@@ -333,6 +312,12 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     {
         try
         {
+            if (!CanCalculate())
+            {
+                _status.Set(AppStatusLevel.Warning, "Check inputs", "One or more fields are invalid.");
+                return;
+            }
+
             var inputs = new CastIronInputs(
                 Composition: new CastIronComposition(Carbon, Silicon, Manganese, Phosphorus, Sulfur),
                 Section: new SectionProfile(ThicknessMm, CoolingRateCPerSec));
