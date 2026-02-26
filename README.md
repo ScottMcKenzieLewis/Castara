@@ -130,9 +130,10 @@ Castara/
 │   │   └── Estimation/
 │   │       └── Services/
 │   │           └── CastIronEstimatorTests.cs
+|   |           └── CastIronEstimatorPropertyTests.cs
 │   │
 │   └── Castara.Wpf.Tests/               # Presentation layer tests
-│       └── ViewModels/
+│       └── ViewModels/         
 │           ├── CalculationsViewModelTests.cs
 │           └── ShellViewModelTests.cs
 │
