@@ -56,7 +56,7 @@ public static class SectionGuards
 
         // Sanity check: typical casting cooling rates are well below 50 °C/s
         // This upper limit helps catch unit conversion errors (e.g., entering 2000 instead of 2.0)
-        if (section.CoolingRateCPerSec > 200)
+        if (section.CoolingRateCPerSec > CastIronInputConstraints.CoolingRateMax)
             throw new ArgumentException("CoolingRateCPerSec seems unrealistically high. Check units (expected °C/s).", nameof(section));
     }
 }

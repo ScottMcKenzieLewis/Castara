@@ -34,6 +34,11 @@ public sealed class CastIronEstimator : ICastIronEstimator
     /// </exception>
     public CastIronEstimate Estimate(CastIronInputs inputs)
     {
+        // Validate inputs param
+        ArgumentNullException.ThrowIfNull(inputs, nameof(inputs));
+        ArgumentNullException.ThrowIfNull(inputs.Composition, nameof(inputs.Composition));
+        ArgumentNullException.ThrowIfNull(inputs.Section, nameof(inputs.Section));
+
         // Validate chemical composition
         var c = inputs.Composition;
         CompositionGuards.Validate(c);
