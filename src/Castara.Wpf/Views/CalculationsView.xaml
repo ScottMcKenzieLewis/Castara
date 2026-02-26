@@ -16,9 +16,35 @@
 
     <UserControl.Resources>
         <conv:RiskSeverityToBrushConverter x:Key="SeverityBrushConverter"/>
+
+        <!-- Common binding options for validated numeric TextBoxes -->
+        <Style x:Key="ValidatedTextBinding" TargetType="{x:Type TextBox}">
+            <Setter Property="TextBox.Text">
+                <!-- Intentionally blank; each TextBox provides Path. -->
+            </Setter>
+        </Style>
+
+        <!-- Shared label style -->
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+
+        <!-- Small info icon wrapper -->
+        <Style x:Key="InfoIconContainer" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="ToolTipService.IsEnabled" Value="True"/>
+        </Style>
+
+        <!-- Common TextBox binding settings via a reusable Binding -->
+        <!-- Use it by copy/pasting the <Binding .../> body and only changing Path -->
+        <!-- (WPF doesn't let us parameterize Binding.Path nicely without a custom markup extension.) -->
     </UserControl.Resources>
 
-    <Grid Margin="8" Background="{DynamicResource MaterialDesignPaper}">
+    <Grid Margin="8"
+          Background="{DynamicResource MaterialDesignPaper}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="460"/>
             <ColumnDefinition Width="16"/>
@@ -31,7 +57,6 @@
         <materialDesign:Card Grid.Column="0"
                              Padding="20"
                              Margin="0,0,16,0">
-
             <StackPanel>
                 <TextBlock Text="Inputs"
                            FontSize="20"
@@ -60,109 +85,149 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
+                    <!-- Carbon -->
                     <StackPanel Grid.Row="0" Grid.Column="0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Carbon (C)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Carbon (C)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding CarbonTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding Carbon, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,10"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,10">
+                            <TextBox.Text>
+                                <Binding Path="CarbonText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
 
+                    <!-- Phosphorus -->
                     <StackPanel Grid.Row="0" Grid.Column="2">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Phosphorus (P)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Phosphorus (P)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding PhosphorusTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding Phosphorus, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,10"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,10">
+                            <TextBox.Text>
+                                <Binding Path="PhosphorusText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
 
+                    <!-- Silicon -->
                     <StackPanel Grid.Row="1" Grid.Column="0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Silicon (Si)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Silicon (Si)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding SiliconTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding Silicon, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,10"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,10">
+                            <TextBox.Text>
+                                <Binding Path="SiliconText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
 
+                    <!-- Sulfur -->
                     <StackPanel Grid.Row="1" Grid.Column="2">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Sulfur (S)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Sulfur (S)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding SulfurTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding Sulfur, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,10"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,10">
+                            <TextBox.Text>
+                                <Binding Path="SulfurText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
 
+                    <!-- Manganese -->
                     <StackPanel Grid.Row="2" Grid.Column="0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Manganese (Mn)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Manganese (Mn)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding ManganeseTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding Manganese, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,0"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,0">
+                            <TextBox.Text>
+                                <Binding Path="ManganeseText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
                 </Grid>
 
@@ -178,46 +243,62 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- Thickness -->
                     <StackPanel Grid.Column="0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Thickness (mm)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Thickness (mm)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding ThicknessTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding ThicknessMm, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,0"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,0">
+                            <TextBox.Text>
+                                <Binding Path="ThicknessMmText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
 
+                    <!-- Cooling rate -->
                     <StackPanel Grid.Column="2">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Cooling Rate (°C/s)" FontSize="12" Opacity="0.7"/>
-                            <Border Background="Transparent"
-                                    Margin="6,0,0,0"
-                                    VerticalAlignment="Center"
-                                    ToolTipService.IsEnabled="True">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Cooling Rate (°C/s)"/>
+                            <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding CoolingRateTooltip}"/>
                                 </Border.ToolTip>
                                 <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Width="14"
-                                                         Height="14"
+                                                         Width="14" Height="14"
                                                          Opacity="0.65"
                                                          IsHitTestVisible="False"/>
                             </Border>
                         </StackPanel>
-                        <TextBox Text="{Binding CoolingRateCPerSec, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,2,0,0"/>
+
+                        <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
+                                 Margin="0,2,0,0">
+                            <TextBox.Text>
+                                <Binding Path="CoolingRateCPerSecText"
+                                         UpdateSourceTrigger="PropertyChanged"
+                                         ValidatesOnDataErrors="True"
+                                         NotifyOnValidationError="True"
+                                         Delay="250"
+                                         FallbackValue="0"
+                                         TargetNullValue="0"/>
+                            </TextBox.Text>
+                        </TextBox>
                     </StackPanel>
                 </Grid>
 
@@ -258,30 +339,24 @@
                                  Background="{DynamicResource MaterialDesignCardBackground}">
                 <UniformGrid Columns="3">
                     <StackPanel>
-                        <TextBlock Text="Carbon Eq." Opacity="0.7"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                        <TextBlock Text="Carbon Eq." Opacity="0.7"/>
                         <TextBlock Text="{Binding CarbonEquivalentText}"
                                    FontSize="26"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                   FontWeight="SemiBold"/>
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Graphitization" Opacity="0.7"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                        <TextBlock Text="Graphitization" Opacity="0.7"/>
                         <TextBlock Text="{Binding GraphitizationScoreText}"
                                    FontSize="26"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                   FontWeight="SemiBold"/>
                     </StackPanel>
 
                     <StackPanel>
-                        <TextBlock Text="Hardness" Opacity="0.7"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                        <TextBlock Text="Hardness" Opacity="0.7"/>
                         <TextBlock Text="{Binding HardnessText}"
                                    FontSize="26"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                   FontWeight="SemiBold"/>
                     </StackPanel>
                 </UniformGrid>
             </materialDesign:Card>
@@ -295,49 +370,33 @@
                     <TextBlock Text="Model Inputs"
                                FontSize="14"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource MaterialDesignBody}"
                                Margin="0,0,0,10"/>
 
                     <UniformGrid Columns="3">
                         <StackPanel>
-                            <TextBlock Text="Carbon Eq."
-                                       Opacity="0.7"
-                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <TextBlock Text="Carbon Eq." Opacity="0.7"/>
                             <TextBlock Text="{Binding CarbonEquivalentText}"
                                        FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                                       FontWeight="SemiBold"/>
                         </StackPanel>
 
                         <StackPanel>
-                            <TextBlock Text="Cooling Factor"
-                                       Opacity="0.7"
-                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <TextBlock Text="Cooling Factor" Opacity="0.7"/>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding CoolingFactorText}"
                                            FontSize="16"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MaterialDesignBody}"/>
-                                <TextBlock Text="  ("
-                                           Opacity="0.8"
-                                           Foreground="{DynamicResource MaterialDesignBody}"/>
-                                <TextBlock Text="{Binding CoolingRateCPerSec}"
-                                           Opacity="0.8"
-                                           Foreground="{DynamicResource MaterialDesignBody}"/>
-                                <TextBlock Text=" °C/s)"
-                                           Opacity="0.8"
-                                           Foreground="{DynamicResource MaterialDesignBody}"/>
+                                           FontWeight="SemiBold"/>
+                                <TextBlock Text="  (" Opacity="0.8"/>
+                                <TextBlock Text="{Binding CoolingRateCPerSecText}" Opacity="0.8"/>
+                                <TextBlock Text=" °C/s)" Opacity="0.8"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel>
-                            <TextBlock Text="Thickness Factor"
-                                       Opacity="0.7"
-                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <TextBlock Text="Thickness Factor" Opacity="0.7"/>
                             <TextBlock Text="{Binding ThicknessFactorText}"
                                        FontSize="16"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                                       FontWeight="SemiBold"/>
                         </StackPanel>
                     </UniformGrid>
                 </StackPanel>
@@ -360,7 +419,6 @@
                         <TextBlock Text="Composition (wt%)"
                                    FontSize="14"
                                    FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesignBody}"
                                    Margin="0,0,0,10"/>
 
                         <Border CornerRadius="10"
@@ -379,7 +437,6 @@
                         <TextBlock Text="Gauges"
                                    FontSize="14"
                                    FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesignBody}"
                                    Margin="0,0,0,10"/>
 
                         <Grid>
@@ -407,14 +464,12 @@
                                                   Width="90"
                                                   Background="Transparent"/>
 
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock Text="Graphitization"
-                                                   Opacity="0.7"
-                                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                    <StackPanel Grid.Column="2"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Graphitization" Opacity="0.7"/>
                                         <TextBlock Text="{Binding GraphitizationScoreText}"
                                                    FontSize="18"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                                   FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -438,14 +493,12 @@
                                                   Width="90"
                                                   Background="Transparent"/>
 
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock Text="Hardness"
-                                                   Opacity="0.7"
-                                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                    <StackPanel Grid.Column="2"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="Hardness" Opacity="0.7"/>
                                         <TextBlock Text="{Binding HardnessText}"
                                                    FontSize="18"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource MaterialDesignBody}"/>
+                                                   FontWeight="SemiBold"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -472,10 +525,8 @@
                     <TextBlock Grid.Row="0"
                                Text="Risk Flags"
                                FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource MaterialDesignBody}"/>
+                               FontWeight="SemiBold"/>
 
-                    <!-- ✅ FIX: ListBox provides reliable scrolling + preserves your badge template -->
                     <ListBox Grid.Row="2"
                              ItemsSource="{Binding Flags}"
                              Background="Transparent"
@@ -527,18 +578,15 @@
                                             <TextBlock Text="{Binding Code}"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource MaterialDesignBody}"
                                                        Opacity="0.85"/>
                                         </Border>
 
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding Name}"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource MaterialDesignBody}"/>
+                                                       FontWeight="SemiBold"/>
                                             <TextBlock Text="{Binding Message}"
                                                        Opacity="0.8"
                                                        TextWrapping="Wrap"
-                                                       Foreground="{DynamicResource MaterialDesignBody}"
                                                        Margin="0,6,0,0"/>
                                         </StackPanel>
 
@@ -565,12 +613,9 @@
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
-
                     </ListBox>
-
                 </Grid>
             </materialDesign:Card>
-
         </Grid>
     </Grid>
 </UserControl>

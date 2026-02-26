@@ -2,6 +2,10 @@
 
 A modern WPF application for cast iron composition analysis and property estimation. Castara provides real-time calculations of carbon equivalent, graphitization potential, and hardness predictions based on chemical composition and section parameters.
 
+## Demo
+
+[![Castara Demo](docs/demo-thumbnail.png)](https://github.com/user-attachments/assets/demo.mp4)
+
 ## Overview
 
 Castara helps metallurgists and engineers analyze cast iron compositions by:

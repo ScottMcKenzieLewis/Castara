@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:conv="clr-namespace:Castara.Wpf.Infrastructure.Converters"
         Title="Castara"
         Width="1200"
         Height="780"
@@ -28,73 +29,89 @@
 
         <Style TargetType="TextBlock">
             <Setter Property="Foreground"
-            Value="{DynamicResource MaterialDesignBody}" />
+                    Value="{DynamicResource MaterialDesignBody}"/>
         </Style>
 
         <Style TargetType="Label">
             <Setter Property="Foreground"
-            Value="{DynamicResource MaterialDesignBody}" />
+                    Value="{DynamicResource MaterialDesignBody}"/>
         </Style>
 
-        <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-            <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
-            <Setter Property="Padding" Value="10,6" />
+        <Style TargetType="TextBox"
+               BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+            <Setter Property="Foreground"
+                    Value="{DynamicResource MaterialDesignBody}"/>
+            <Setter Property="Background"
+                    Value="{DynamicResource MaterialDesignPaper}"/>
+            <Setter Property="Padding"
+                    Value="10,6"/>
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-            <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource MaterialDesignBody}"/>
+            <Setter Property="Background"
+                    Value="{DynamicResource MaterialDesignPaper}"/>
         </Style>
-        
 
-        <!-- =========================================================
-             Caption button hover/pressed brushes (NO hex-with-alpha in triggers)
-             ========================================================= -->
-
+        <!-- Caption button hover/pressed brushes (NO hex-with-alpha in triggers) -->
         <!-- Subtle hover/pressed for minimize/max/restore -->
-        <SolidColorBrush x:Key="CaptionHoverBrush"   Color="#268A8A8A"/>
-        <SolidColorBrush x:Key="CaptionPressedBrush" Color="#30909090"/>
+        <SolidColorBrush x:Key="CaptionHoverBrush"
+                         Color="#268A8A8A"/>
+        <SolidColorBrush x:Key="CaptionPressedBrush"
+                         Color="#30909090"/>
 
         <!-- Close button hover/pressed (Windows-like) -->
-        <SolidColorBrush x:Key="CaptionCloseHoverBrush"   Color="#E81123"/>
-        <SolidColorBrush x:Key="CaptionClosePressedBrush" Color="#C50F1F"/>
+        <SolidColorBrush x:Key="CaptionCloseHoverBrush"
+                         Color="#E81123"/>
+        <SolidColorBrush x:Key="CaptionClosePressedBrush"
+                         Color="#C50F1F"/>
 
-        <!-- =========================================================
-             Caption Buttons
-             ========================================================= -->
-
-        <Style x:Key="CaptionButtonStyle" TargetType="Button">
+        <!-- Caption Buttons -->
+        <Style x:Key="CaptionButtonStyle"
+               TargetType="Button">
             <!-- Important: keep arrow cursor, not hand -->
-            <Setter Property="Cursor" Value="Arrow"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="44"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Cursor"
+                    Value="Arrow"/>
+            <Setter Property="Background"
+                    Value="Transparent"/>
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+            <Setter Property="Width"
+                    Value="44"/>
+            <Setter Property="HorizontalContentAlignment"
+                    Value="Center"/>
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center"/>
+            <Setter Property="FocusVisualStyle"
+                    Value="{x:Null}"/>
 
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Background="Transparent">
+                        <Border x:Name="Bg"
+                                Background="Transparent">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Border>
 
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
                                         Value="{StaticResource CaptionHoverBrush}"/>
                             </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
+                            <Trigger Property="IsPressed"
+                                     Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
                                         Value="{StaticResource CaptionPressedBrush}"/>
                             </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45"/>
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+                                <Setter Property="Opacity"
+                                        Value="0.45"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,24 +125,29 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" Background="Transparent">
+                        <Border x:Name="Bg"
+                                Background="Transparent">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Border>
 
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger Property="IsMouseOver"
+                                     Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
                                         Value="{StaticResource CaptionCloseHoverBrush}"/>
                             </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
+                            <Trigger Property="IsPressed"
+                                     Value="True">
                                 <Setter TargetName="Bg"
                                         Property="Background"
                                         Value="{StaticResource CaptionClosePressedBrush}"/>
                             </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45"/>
+                            <Trigger Property="IsEnabled"
+                                     Value="False">
+                                <Setter Property="Opacity"
+                                        Value="0.45"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -151,7 +173,7 @@
                 BorderBrush="#2E363B"
                 BorderThickness="0,0,0,1">
 
-            <!-- mouse down allows drag/move (code-behind handles double click to maximize) -->
+            <!-- Mouse down allows drag/move (code-behind handles double click to maximize) -->
             <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -178,7 +200,8 @@
                 <!-- Caption buttons -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                            MouseLeftButtonDown="CaptionButtons_MouseLeftButtonDown">
 
                     <Button Style="{StaticResource CaptionButtonStyle}"
                             Click="Minimize_Click"
@@ -207,7 +230,6 @@
                                                  Height="18"
                                                  Foreground="#D0D0D0"/>
                     </Button>
-
                 </StackPanel>
             </Grid>
         </Border>
@@ -257,7 +279,8 @@
         <!-- =========================
              CONTENT
              ========================= -->
-        <Grid Grid.Row="2" Margin="20">
+        <Grid Grid.Row="2"
+              Margin="20">
             <ContentControl Content="{Binding CurrentViewModel}"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch"/>
@@ -273,9 +296,12 @@
                 BorderThickness="0,1,0,0">
 
             <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#1A2024" Offset="0"/>
-                    <GradientStop Color="#14181B" Offset="1"/>
+                <LinearGradientBrush StartPoint="0,0"
+                                     EndPoint="0,1">
+                    <GradientStop Color="#1A2024"
+                                  Offset="0"/>
+                    <GradientStop Color="#14181B"
+                                  Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
 
@@ -309,9 +335,7 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
-
             </Grid>
         </Border>
-
     </Grid>
 </Window>
