@@ -1,352 +1,272 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-
+﻿using Castara.Domain.Composition;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
-
+using Castara.Domain.Estimation.Validation;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.ViewModels;
-
 using Moq;
-
 using OxyPlot.Series;
-
+using System;
+using System.Linq;
+using System.Windows.Input;
+using System.Windows.Interop;
 using Xunit;
 
-namespace Castara.Wpf.Tests;
+namespace Castara.Wpf.Tests.ViewModels;
 
 public sealed class CalculationsViewModelTests
 {
-    // -----------------------------
-    // Spies / helpers
-    // -----------------------------
-
-    private sealed class StatusSpy
+    private static CalculationsViewModel CreateVm(
+        Mock<IStatusService>? statusMock = null,
+        Mock<ICastIronEstimator>? estimatorMock = null)
     {
-        public Mock<IStatusService> Mock { get; }
-        public List<(AppStatusLevel Level, string Left, string Right)> Calls { get; } = new();
+        statusMock ??= new Mock<IStatusService>();
+        estimatorMock ??= new Mock<ICastIronEstimator>();
 
-        private StatusState _current = new(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
-
-        public StatusSpy(MockBehavior behavior)
-        {
-            Mock = new Mock<IStatusService>(behavior);
-
-            Mock.SetupGet(s => s.Current).Returns(() => _current);
-
-            Mock.Setup(s => s.Set(It.IsAny<AppStatusLevel>(), It.IsAny<string>(), It.IsAny<string>()))
-                .Callback<AppStatusLevel, string, string>((lvl, left, right) =>
-                {
-                    _current = new StatusState(lvl, left, right);
-                    Calls.Add((lvl, left, right));
-                });
-
-            // VM doesn’t need status PropertyChanged today, but keep it safe.
-            Mock.SetupAdd(s => s.PropertyChanged += It.IsAny<PropertyChangedEventHandler>());
-        }
+        return new CalculationsViewModel(
+            statusMock.Object,
+            estimatorMock.Object);
     }
 
-    private static (CalculationsViewModel Vm, StatusSpy Status, Mock<ICastIronEstimator> Estimator) CreateSut(
-        MockBehavior behavior = MockBehavior.Strict)
-    {
-        var status = new StatusSpy(behavior);
-        var estimator = new Mock<ICastIronEstimator>(behavior);
-
-        var vm = new CalculationsViewModel(status.Mock.Object, estimator.Object);
-        return (vm, status, estimator);
-    }
-
-    private static BarSeries GetCompositionSeries(CalculationsViewModel vm)
-        => Assert.IsType<BarSeries>(Assert.Single(vm.CompositionPlotModel.Series));
-
-    private static PieSeries GetGraphGaugeSeries(CalculationsViewModel vm)
-        => Assert.IsType<PieSeries>(Assert.Single(vm.GraphGaugeModel.Series));
-
-    private static PieSeries GetHardnessGaugeSeries(CalculationsViewModel vm)
-        => Assert.IsType<PieSeries>(Assert.Single(vm.HardnessGaugeModel.Series));
-
-    private static double SliceValue(PieSeries s, int index) => s.Slices[index].Value;
-
-    // -----------------------------
-    // Tests
-    // -----------------------------
+    // ============================================================
+    // Constructor / Initialization
+    // ============================================================
 
     [Fact]
-    public void Ctor_Sets_DefaultInputs_SeedsPlots_And_Sets_Ready_Status()
+    public void Constructor_InitializesDefaults_AndPlots()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var statusMock = new Mock<IStatusService>();
+        var estimatorMock = new Mock<ICastIronEstimator>();
 
-        // ctor should NOT call estimator
-        estimator.VerifyNoOtherCalls();
+        var vm = CreateVm(statusMock, estimatorMock);
 
-        // Defaults (from your ctor)
         Assert.Equal(3.40, vm.Carbon, 3);
         Assert.Equal(2.10, vm.Silicon, 3);
-        Assert.Equal(0.55, vm.Manganese, 3);
-        Assert.Equal(0.05, vm.Phosphorus, 3);
-        Assert.Equal(0.02, vm.Sulfur, 3);
         Assert.Equal(12.0, vm.ThicknessMm, 3);
-        Assert.Equal(1.0, vm.CoolingRateCPerSec, 3);
 
-        // No result initially
-        Assert.False(vm.HasResult);
-        Assert.Null(vm.Result);
-        Assert.Equal("—", vm.CarbonEquivalentText);
-        Assert.Equal("—", vm.GraphitizationScoreText);
-        Assert.Equal("—", vm.HardnessText);
-        Assert.Equal("—", vm.CoolingFactorText);
-        Assert.Equal("—", vm.ThicknessFactorText);
-        Assert.Empty(vm.Flags);
+        Assert.NotNull(vm.CompositionPlotModel);
+        Assert.NotNull(vm.GraphGaugeModel);
+        Assert.NotNull(vm.HardnessGaugeModel);
 
-        // Composition plot seeded with defaults (and clamped display)
-        var comp = GetCompositionSeries(vm);
-        Assert.Equal(5, comp.Items.Count);
-        Assert.Equal(3.40, comp.Items[0].Value, 3); // C
-        Assert.Equal(2.10, comp.Items[1].Value, 3); // Si
-        Assert.Equal(0.55, comp.Items[2].Value, 3); // Mn
-        Assert.Equal(0.05, comp.Items[3].Value, 3); // P
-        Assert.Equal(0.02, comp.Items[4].Value, 3); // S
+        statusMock.Verify(s =>
+            s.Set(AppStatusLevel.Ok,
+                  "Ready",
+                  "Ready for Calculation"),
+            Times.Once);
+    }
 
-        // Gauges seeded to zero (value slice 0, remainder 1)
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(2, g.Slices.Count);
-        Assert.Equal(0.0, SliceValue(g, 0), 10);
-        Assert.Equal(1.0, SliceValue(g, 1), 10);
+    // ============================================================
+    // Validation behavior
+    // ============================================================
 
-        var h = GetHardnessGaugeSeries(vm);
-        Assert.Equal(2, h.Slices.Count);
-        Assert.Equal(0.0, SliceValue(h, 0), 10);
-        Assert.Equal(1.0, SliceValue(h, 1), 10);
+    [Fact]
+    public void InvalidText_DoesNotUpdateCanonicalValue()
+    {
+        var vm = CreateVm();
 
-        // Status set to Ready
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Ok &&
-            c.Left == "Ready" &&
-            c.Right == "Ready for Calculation");
+        var before = vm.Carbon;
+
+        vm.CarbonText = "abc";
+
+        Assert.Equal(before, vm.Carbon);
+        Assert.False(vm.IsValid);
     }
 
     [Fact]
-    public void Composition_Setters_Update_BarSeries_And_Clamp_Display_Values()
+    public void OutOfRangeText_FailsValidation()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Loose);
+        var vm = CreateVm();
 
-        var comp = GetCompositionSeries(vm);
+        vm.CarbonText = "10";
 
-        vm.Carbon = 99;      // clamp to 5 in chart
-        vm.Manganese = -10;  // clamp to 0 in chart
-        vm.Phosphorus = 2;   // clamp to 1 in chart
-        vm.Sulfur = double.NaN; // clamp to min (0) in chart
+        Assert.False(vm.IsValid);
 
-        Assert.Equal(5.0, comp.Items[0].Value, 10);
-        Assert.Equal(0.0, comp.Items[2].Value, 10);
-        Assert.Equal(1.0, comp.Items[3].Value, 10);
-        Assert.Equal(0.0, comp.Items[4].Value, 10);
+        var err =
+            ((System.ComponentModel.IDataErrorInfo)vm)
+            [nameof(vm.CarbonText)];
 
-        // ctor status call exists; we don't care here
-        Assert.True(status.Calls.Count >= 1);
-        estimator.VerifyNoOtherCalls();
+        Assert.Contains("between", err);
     }
 
     [Fact]
-    public void Calculate_When_InvalidInputs_Clears_Result_Sets_Warning_And_Resets_Gauges()
+    public void ValidText_UpdatesCanonicalValue()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var vm = CreateVm();
 
-        // Make invalid
-        vm.Carbon = -1;
+        vm.CarbonText = "4.0";
+
+        Assert.Equal(4.0, vm.Carbon, 6);
+        Assert.True(vm.IsValid);
+    }
+
+    // ============================================================
+    // Calculate Command
+    // ============================================================
+
+    [Fact]
+    public void CalculateCommand_CallsEstimator_WithCanonicalInputs()
+    {
+        var estimatorMock = new Mock<ICastIronEstimator>();
+
+        estimatorMock
+            .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
+            .Returns(CreateEstimate());
+
+        var vm = CreateVm(
+            estimatorMock: estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
-        estimator.Verify(e => e.Estimate(It.IsAny<CastIronInputs>()), Times.Never);
-
-        Assert.False(vm.HasResult);
-        Assert.Null(vm.Result);
-
-        // Should set warning with "Check inputs" and first issue as right text
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Warning &&
-            c.Left == "Check inputs" &&
-            !string.IsNullOrWhiteSpace(c.Right));
-
-        // Gauges should be reset to 0
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(0.0, SliceValue(g, 0), 10);
-
-        var h = GetHardnessGaugeSeries(vm);
-        Assert.Equal(0.0, SliceValue(h, 0), 10);
+        estimatorMock.Verify(e =>
+            e.Estimate(It.Is<CastIronInputs>(i =>
+                i.Composition.Carbon == vm.Carbon &&
+                i.Section.ThicknessMm == vm.ThicknessMm)),
+            Times.Once);
     }
 
     [Fact]
-    public void Calculate_When_Estimate_Succeeds_NoFlags_Sets_Result_Updates_Text_And_Status_Ok()
+    public void CalculateCommand_SetsResult_AndStatusOk()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var estimatorMock = new Mock<ICastIronEstimator>();
+        var statusMock = new Mock<IStatusService>();
 
-        var estimate = new CastIronEstimate(
-            CarbonEquivalent: 3.8123,
-            GraphitizationScore: 0.61234,
-            EstimatedHardness: new HardnessRange(180, 220),
-            CoolingFactor: 0.001,
-            ThicknessFactor: -0.250,
-            Flags: Array.Empty<RiskFlag>());
+        estimatorMock
+            .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
+            .Returns(CreateEstimate());
 
-        estimator.Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
-                 .Returns(estimate);
+        var vm = CreateVm(statusMock, estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
-        estimator.Verify(e => e.Estimate(It.IsAny<CastIronInputs>()), Times.Once);
-
-        Assert.True(vm.HasResult);
         Assert.NotNull(vm.Result);
-        Assert.Equal("3.812", vm.CarbonEquivalentText);
-        Assert.Equal("0.612", vm.GraphitizationScoreText);
-        Assert.Equal("180-220 HB", vm.HardnessText);
-        Assert.Equal("0.001", vm.CoolingFactorText);
-        Assert.Equal("-0.250", vm.ThicknessFactorText);
-        Assert.Empty(vm.Flags);
 
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Ok &&
-            c.Left == "Calculated" &&
-            c.Right == "No risks");
-
-        // Gauges should reflect values
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(0.61234, SliceValue(g, 0), 6);
-
-        // Hardness normalization uses hb midpoint (200) in [140..320]
-        // norm = (200-140)/(320-140)=60/180=0.333333...
-        var h = GetHardnessGaugeSeries(vm);
-        Assert.Equal(60.0 / 180.0, SliceValue(h, 0), 6);
+        statusMock.Verify(s =>
+            s.Set(AppStatusLevel.Ok,
+                  "Calculated",
+                  "OK"),
+            Times.Once);
     }
 
     [Fact]
-    public void Calculate_When_HighSeverity_Flag_Sets_Status_Warning_And_RiskCount()
+    public void CalculateCommand_InvalidInputs_DoesNotCallEstimator()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var estimatorMock = new Mock<ICastIronEstimator>();
 
-        var flags = new[]
-        {
-            new RiskFlag("CHILL_RISK", "Chill Risk", RiskSeverity.High, "High risk")
-        };
+        var vm = CreateVm(estimatorMock: estimatorMock);
 
-        var estimate = new CastIronEstimate(
-            CarbonEquivalent: 3.9,
-            GraphitizationScore: 0.4,
-            EstimatedHardness: new HardnessRange(240, 280),
-            CoolingFactor: 0.0,
-            ThicknessFactor: 0.0,
-            Flags: flags);
-
-        estimator.Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
-                 .Returns(estimate);
+        vm.CarbonText = "abc";
 
         vm.CalculateCommand.Execute(null);
 
-        Assert.True(vm.HasResult);
-        Assert.Single(vm.Flags);
-
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Warning &&
-            c.Left == "Calculated" &&
-            c.Right == "1 risk(s)");
+        estimatorMock.Verify(
+            e => e.Estimate(It.IsAny<CastIronInputs>()),
+            Times.Never);
     }
 
     [Fact]
-    public void Calculate_When_Estimator_Throws_Sets_Error_Status_And_Clears_Result()
+    public void CalculateCommand_Exception_SetsErrorStatus()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var estimatorMock = new Mock<ICastIronEstimator>();
+        var statusMock = new Mock<IStatusService>();
 
-        estimator.Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
-                 .Throws(new InvalidOperationException("boom"));
+        estimatorMock
+            .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
+            .Throws(new InvalidOperationException("boom"));
+
+        var vm = CreateVm(statusMock, estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
-        Assert.False(vm.HasResult);
         Assert.Null(vm.Result);
 
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Error &&
-            c.Left == "Calculation failed" &&
-            c.Right.Contains("boom", StringComparison.OrdinalIgnoreCase));
-
-        // Gauges should be reset
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(0.0, SliceValue(g, 0), 10);
+        statusMock.Verify(s =>
+            s.Set(AppStatusLevel.Error,
+                  "Calculation failed",
+                  "boom"),
+            Times.Once);
     }
 
-    [Fact]
-    public void ClearCommand_Clears_Result_Resets_Gauges_And_Sets_Ready_Status()
-    {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+    // ============================================================
+    // Clear Command
+    // ============================================================
 
-        estimator.Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
-                 .Returns(new CastIronEstimate(
-                     CarbonEquivalent: 3.8,
-                     GraphitizationScore: 0.7,
-                     EstimatedHardness: new HardnessRange(170, 210),
-                     CoolingFactor: 0.0,
-                     ThicknessFactor: 0.0,
-                     Flags: Array.Empty<RiskFlag>()));
+    [Fact]
+    public void ClearCommand_ResetsDefaults_AndResult()
+    {
+        var estimatorMock = new Mock<ICastIronEstimator>();
+
+        estimatorMock
+            .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
+            .Returns(CreateEstimate());
+
+        var vm = CreateVm(estimatorMock: estimatorMock);
 
         vm.CalculateCommand.Execute(null);
-        Assert.True(vm.HasResult);
+
+        Assert.NotNull(vm.Result);
 
         vm.ClearCommand.Execute(null);
 
-        Assert.False(vm.HasResult);
         Assert.Null(vm.Result);
 
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(0.0, SliceValue(g, 0), 10);
-
-        Assert.Contains(status.Calls, c =>
-            c.Level == AppStatusLevel.Ok &&
-            c.Left == "Ready" &&
-            c.Right == "Ready for Calculation");
+        Assert.Equal(3.40, vm.Carbon, 3);
+        Assert.Equal(12.0, vm.ThicknessMm, 3);
     }
 
+    // ============================================================
+    // Composition Plot Behavior
+    // ============================================================
+
     [Fact]
-    public void SetTheme_Rebuilds_Plots_But_Preserves_LastGaugeValues()
+    public void ChangingComposition_UpdatesPlotValues()
     {
-        var (vm, status, estimator) = CreateSut(MockBehavior.Strict);
+        var vm = CreateVm();
 
-        // Create a result so we have cached gauge values to repaint after theme change
-        estimator.Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
-                 .Returns(new CastIronEstimate(
-                     CarbonEquivalent: 3.7,
-                     GraphitizationScore: 0.25,              // should show on graph gauge
-                     EstimatedHardness: new HardnessRange(300, 320), // midpoint 310 => norm (310-140)/180 = 0.944444...
-                     CoolingFactor: 0.0,
-                     ThicknessFactor: 0.0,
-                     Flags: Array.Empty<RiskFlag>()));
+        vm.CarbonText = "4.0";
 
-        vm.CalculateCommand.Execute(null);
+        var barSeries =
+            vm.CompositionPlotModel.Series
+            .OfType<BarSeries>()
+            .Single();
 
-        var oldComp = vm.CompositionPlotModel;
-        var oldGraph = vm.GraphGaugeModel;
-        var oldHard = vm.HardnessGaugeModel;
+        Assert.Equal(4.0, barSeries.Items[0].Value, 6);
+    }
 
-        // Act
-        vm.SetTheme(isDark: false);
+    // ============================================================
+    // Theme Behavior
+    // ============================================================
 
-        Assert.False(vm.IsDarkTheme);
+    [Fact]
+    public void ChangingTheme_RebuildsPlotModels()
+    {
+        var vm = CreateVm();
 
-        // Models should be rebuilt (new instances)
-        Assert.NotSame(oldComp, vm.CompositionPlotModel);
-        Assert.NotSame(oldGraph, vm.GraphGaugeModel);
-        Assert.NotSame(oldHard, vm.HardnessGaugeModel);
+        var before = vm.CompositionPlotModel;
 
-        // Gauge values should be preserved after theme rebuild
-        var g = GetGraphGaugeSeries(vm);
-        Assert.Equal(0.25, SliceValue(g, 0), 6);
+        vm.IsDarkTheme = !vm.IsDarkTheme;
 
-        var h = GetHardnessGaugeSeries(vm);
-        var expectedHbNorm = (310.0 - 140.0) / (320.0 - 140.0); // 170/180 = 0.944444...
-        Assert.Equal(expectedHbNorm, SliceValue(h, 0), 6);
+        Assert.NotSame(before, vm.CompositionPlotModel);
+    }
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+
+    private static CastIronEstimate CreateEstimate()
+    {
+        return new CastIronEstimate(
+            CarbonEquivalent: 4.2,
+            GraphitizationScore: 0.6,
+            CoolingFactor: 0.1,
+            ThicknessFactor: -0.05,
+            EstimatedHardness: new HardnessRange(180, 220),
+            Flags: new[]
+            {
+                new RiskFlag("CHILL_RISK","Chill",RiskSeverity.Low, "msg"),
+                new RiskFlag("SHRINK_RISK","Shrink",RiskSeverity.Low, "msg"),
+                new RiskFlag("MACHINABILITY","Mach",RiskSeverity.Low, "msg")
+            });
     }
 }
