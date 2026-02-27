@@ -83,6 +83,8 @@ Castara/
 │   │       │   └── CastIronEstimationConstants.cs
 │   │       │
 │   │       └── Validation/               # Business rule validation
+|   |           └── CastIronInputsConstraints.cs
+|   |           └── CompositionGuards.cs
 │   │           └── SectionGuards.cs
 │   │
 │   ├── Castara.Wpf/                     # Presentation Layer (Active)
