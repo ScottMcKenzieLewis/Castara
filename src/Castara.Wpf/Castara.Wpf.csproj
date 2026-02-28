@@ -18,11 +18,11 @@
   <ItemGroup>
     <PackageReference Include="MaterialDesignColors" Version="5.3.1-ci1279" />
     <PackageReference Include="MaterialDesignThemes" Version="5.3.1-ci1279" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.24">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="OxyPlot.Core" Version="2.2.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
@@ -30,7 +30,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Castara.Domain\Castara.Domain.csproj" />
-    <ProjectReference Include="..\Castara.Infrastructure\Castara.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,32 +2,36 @@
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
-using Castara.Domain.Estimation.Validation;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.ViewModels;
+using Microsoft.Extensions.Logging;
 using Moq;
 using OxyPlot.Series;
-using System;
-using System.Linq;
-using System.Windows.Input;
-using System.Windows.Interop;
-using Xunit;
 
 namespace Castara.Wpf.Tests.ViewModels;
 
 public sealed class CalculationsViewModelTests
 {
     private static CalculationsViewModel CreateVm(
-        Mock<IStatusService>? statusMock = null,
-        Mock<ICastIronEstimator>? estimatorMock = null)
+        out Mock<IStatusService> statusMock,
+        out Mock<ICastIronEstimator> estimatorMock,
+        out Mock<ILogger<CalculationsViewModel>> loggerMock)
     {
-        statusMock ??= new Mock<IStatusService>();
-        estimatorMock ??= new Mock<ICastIronEstimator>();
+        statusMock = new Mock<IStatusService>(MockBehavior.Strict);
+        estimatorMock = new Mock<ICastIronEstimator>(MockBehavior.Strict);
+        loggerMock = new Mock<ILogger<CalculationsViewModel>>(MockBehavior.Loose);
+
+        // You can keep Strict on status/estimator and Loose on logger.
+        // Strict helps catch accidental extra calls.
+
+        statusMock
+            .Setup(s => s.Set(It.IsAny<AppStatusLevel>(), It.IsAny<string>(), It.IsAny<string>()));
 
         return new CalculationsViewModel(
             statusMock.Object,
-            estimatorMock.Object);
+            estimatorMock.Object,
+            loggerMock.Object);
     }
 
     // ============================================================
@@ -37,10 +41,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void Constructor_InitializesDefaults_AndPlots()
     {
-        var statusMock = new Mock<IStatusService>();
-        var estimatorMock = new Mock<ICastIronEstimator>();
-
-        var vm = CreateVm(statusMock, estimatorMock);
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         Assert.Equal(3.40, vm.Carbon, 3);
         Assert.Equal(2.10, vm.Silicon, 3);
@@ -64,7 +65,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void InvalidText_DoesNotUpdateCanonicalValue()
     {
-        var vm = CreateVm();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         var before = vm.Carbon;
 
@@ -77,7 +78,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void OutOfRangeText_FailsValidation()
     {
-        var vm = CreateVm();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         vm.CarbonText = "10";
 
@@ -93,7 +94,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void ValidText_UpdatesCanonicalValue()
     {
-        var vm = CreateVm();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         vm.CarbonText = "4.0";
 
@@ -108,14 +109,11 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void CalculateCommand_CallsEstimator_WithCanonicalInputs()
     {
-        var estimatorMock = new Mock<ICastIronEstimator>();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         estimatorMock
             .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
             .Returns(CreateEstimate());
-
-        var vm = CreateVm(
-            estimatorMock: estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
@@ -129,14 +127,11 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void CalculateCommand_SetsResult_AndStatusOk()
     {
-        var estimatorMock = new Mock<ICastIronEstimator>();
-        var statusMock = new Mock<IStatusService>();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         estimatorMock
             .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
             .Returns(CreateEstimate());
-
-        var vm = CreateVm(statusMock, estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
@@ -152,9 +147,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void CalculateCommand_InvalidInputs_DoesNotCallEstimator()
     {
-        var estimatorMock = new Mock<ICastIronEstimator>();
-
-        var vm = CreateVm(estimatorMock: estimatorMock);
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         vm.CarbonText = "abc";
 
@@ -168,14 +161,11 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void CalculateCommand_Exception_SetsErrorStatus()
     {
-        var estimatorMock = new Mock<ICastIronEstimator>();
-        var statusMock = new Mock<IStatusService>();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         estimatorMock
             .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
             .Throws(new InvalidOperationException("boom"));
-
-        var vm = CreateVm(statusMock, estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
@@ -195,13 +185,11 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void ClearCommand_ResetsDefaults_AndResult()
     {
-        var estimatorMock = new Mock<ICastIronEstimator>();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         estimatorMock
             .Setup(e => e.Estimate(It.IsAny<CastIronInputs>()))
             .Returns(CreateEstimate());
-
-        var vm = CreateVm(estimatorMock: estimatorMock);
 
         vm.CalculateCommand.Execute(null);
 
@@ -222,7 +210,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void ChangingComposition_UpdatesPlotValues()
     {
-        var vm = CreateVm();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         vm.CarbonText = "4.0";
 
@@ -241,7 +229,7 @@ public sealed class CalculationsViewModelTests
     [Fact]
     public void ChangingTheme_RebuildsPlotModels()
     {
-        var vm = CreateVm();
+        var vm = CreateVm(out var statusMock, out var estimatorMock, out var loggerMock);
 
         var before = vm.CompositionPlotModel;
 

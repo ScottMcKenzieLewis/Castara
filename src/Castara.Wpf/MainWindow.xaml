@@ -27,6 +27,12 @@
 
     <Window.Resources>
 
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <!-- ========================================
+             Default Control Styles
+             ======================================== -->
+
         <Style TargetType="TextBlock">
             <Setter Property="Foreground"
                     Value="{DynamicResource MaterialDesignBody}"/>
@@ -54,23 +60,27 @@
                     Value="{DynamicResource MaterialDesignPaper}"/>
         </Style>
 
-        <!-- Caption button hover/pressed brushes (NO hex-with-alpha in triggers) -->
-        <!-- Subtle hover/pressed for minimize/max/restore -->
+        <!-- ========================================
+             Caption Button Brushes
+             Note: No hex-with-alpha in triggers
+             ======================================== -->
+
         <SolidColorBrush x:Key="CaptionHoverBrush"
                          Color="#268A8A8A"/>
         <SolidColorBrush x:Key="CaptionPressedBrush"
                          Color="#30909090"/>
 
-        <!-- Close button hover/pressed (Windows-like) -->
         <SolidColorBrush x:Key="CaptionCloseHoverBrush"
                          Color="#E81123"/>
         <SolidColorBrush x:Key="CaptionClosePressedBrush"
                          Color="#C50F1F"/>
 
-        <!-- Caption Buttons -->
+        <!-- ========================================
+             Caption Button Styles
+             ======================================== -->
+
         <Style x:Key="CaptionButtonStyle"
                TargetType="Button">
-            <!-- Important: keep arrow cursor, not hand -->
             <Setter Property="Cursor"
                     Value="Arrow"/>
             <Setter Property="Background"
@@ -155,187 +165,579 @@
             </Setter>
         </Style>
 
+        <!-- ========================================
+             Log dialog helper styles
+             ======================================== -->
+
+        <Style x:Key="LogGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Make ComboBox popup readable in dark dialog -->
+        <Style x:Key="LogLevelComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#EAEAEA"/>
+            <Setter Property="Background" Value="#0F1316"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1D2429"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#243038"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LogLevelComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#EAEAEA"/>
+            <Setter Property="Background" Value="#0F1316"/>
+            <Setter Property="BorderBrush" Value="#2A2A2A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource LogLevelComboBoxItemStyle}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          FocusVisualStyle="{x:Null}"
+                                          ClickMode="Press">
+                                <Grid>
+                                    <ContentPresenter Margin="10,4,28,4"
+                                                      HorizontalAlignment="Left"
+                                                      VerticalAlignment="Center"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                      RecognizesAccessKey="True"/>
+                                    <materialDesign:PackIcon Kind="ChevronDown"
+                                                             Width="18"
+                                                             Height="18"
+                                                             Foreground="#D6D6D6"
+                                                             HorizontalAlignment="Right"
+                                                             Margin="0,0,8,0"
+                                                             VerticalAlignment="Center"/>
+                                </Grid>
+                            </ToggleButton>
+
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="#0F1316"
+                                        BorderBrush="#2A2A2A"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        SnapsToDevicePixels="True">
+                                    <ScrollViewer Margin="0"
+                                                  SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.65"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="44"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="36"/>
-        </Grid.RowDefinitions>
+    <!-- ========================================
+         Main Layout with Dialog Host
+         ======================================== -->
 
-        <!-- =========================
-             TITLE BAR
-             ========================= -->
-        <Border Grid.Row="0"
-                Background="#1F262A"
-                BorderBrush="#2E363B"
-                BorderThickness="0,0,0,1">
+    <materialDesign:DialogHost Identifier="RootDialog"
+                               IsOpen="{Binding IsLogsOpen}">
 
-            <!-- Mouse down allows drag/move (code-behind handles double click to maximize) -->
-            <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- Main window grid -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="36"/>
+            </Grid.RowDefinitions>
 
-                <!-- App mark -->
-                <Image Width="64"
-                       Height="64"
-                       Margin="0,0,0,0"
-                       VerticalAlignment="Center"
-                       RenderOptions.BitmapScalingMode="HighQuality"
-                       Source="pack://application:,,,/Resources/castara_logo_64.png"/>
+            <!-- ========================================
+                 TITLE BAR
+                 ======================================== -->
+            <Border Grid.Row="0"
+                    Background="#1F262A"
+                    BorderBrush="#2E363B"
+                    BorderThickness="0,0,0,1">
 
-                <!-- App title -->
-                <TextBlock Grid.Column="1"
-                           Text="CASTARA"
-                           FontSize="17"
-                           FontWeight="ExtraBold"
+                <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Image Width="64"
+                           Height="64"
+                           Margin="0,0,0,0"
                            VerticalAlignment="Center"
-                           Foreground="#F0F0F0"/>
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Source="pack://application:,,,/Resources/castara_logo_64.png"/>
 
-                <!-- Caption buttons -->
-                <StackPanel Grid.Column="2"
-                            Orientation="Horizontal"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                            MouseLeftButtonDown="CaptionButtons_MouseLeftButtonDown">
+                    <TextBlock Grid.Column="1"
+                               Text="CASTARA"
+                               FontSize="17"
+                               FontWeight="ExtraBold"
+                               VerticalAlignment="Center"
+                               Foreground="#F0F0F0"/>
 
-                    <Button Style="{StaticResource CaptionButtonStyle}"
-                            Click="Minimize_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <materialDesign:PackIcon Kind="WindowMinimize"
-                                                 Width="18"
-                                                 Height="18"
-                                                 Foreground="#D0D0D0"/>
-                    </Button>
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                                MouseLeftButtonDown="CaptionButtons_MouseLeftButtonDown">
 
-                    <Button Style="{StaticResource CaptionButtonStyle}"
-                            Click="MaxRestore_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <materialDesign:PackIcon x:Name="MaxRestoreIcon"
-                                                 Kind="WindowMaximize"
-                                                 Width="18"
-                                                 Height="18"
-                                                 Foreground="#D0D0D0"/>
-                    </Button>
+                        <Button Style="{StaticResource CaptionButtonStyle}"
+                                Click="Minimize_Click"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <materialDesign:PackIcon Kind="WindowMinimize"
+                                                     Width="18"
+                                                     Height="18"
+                                                     Foreground="#D0D0D0"/>
+                        </Button>
 
-                    <Button Style="{StaticResource CaptionCloseButtonStyle}"
-                            Click="Close_Click"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                        <materialDesign:PackIcon Kind="WindowClose"
-                                                 Width="18"
-                                                 Height="18"
-                                                 Foreground="#D0D0D0"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
+                        <Button Style="{StaticResource CaptionButtonStyle}"
+                                Click="MaxRestore_Click"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <materialDesign:PackIcon x:Name="MaxRestoreIcon"
+                                                     Kind="WindowMaximize"
+                                                     Width="18"
+                                                     Height="18"
+                                                     Foreground="#D0D0D0"/>
+                        </Button>
 
-        <!-- =========================
-             TOP TOOLBAR (Light/Dark toggle)
-             ========================= -->
-        <materialDesign:ColorZone Grid.Row="1"
-                                  Mode="PrimaryDark"
-                                  Padding="16">
+                        <Button Style="{StaticResource CaptionCloseButtonStyle}"
+                                Click="Close_Click"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <materialDesign:PackIcon Kind="WindowClose"
+                                                     Width="18"
+                                                     Height="18"
+                                                     Foreground="#D0D0D0"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <!-- ========================================
+                 TOP TOOLBAR (Theme Toggle)
+                 ======================================== -->
+            <materialDesign:ColorZone Grid.Row="1"
+                                      Mode="PrimaryDark"
+                                      Padding="16">
 
-                <TextBlock Text="Workbench"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           Opacity="0.9"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-
-                    <TextBlock Text="Light"
-                               Foreground="#F0F0F0"
-                               Margin="0,0,8,0"
+                    <TextBlock Text="Workbench"
+                               FontSize="16"
+                               FontWeight="SemiBold"
                                VerticalAlignment="Center"
                                Opacity="0.9"/>
 
-                    <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                  IsChecked="{Binding IsDarkMode}"
-                                  VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
 
-                    <TextBlock Text="Dark"
-                               Foreground="#F0F0F0"
-                               Margin="8,0,0,0"
-                               VerticalAlignment="Center"
-                               Opacity="0.9"/>
-                </StackPanel>
+                        <TextBlock Text="Light"
+                                   Foreground="#F0F0F0"
+                                   Margin="0,0,8,0"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.9"/>
+
+                        <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                      IsChecked="{Binding IsDarkMode}"
+                                      VerticalAlignment="Center"/>
+
+                        <TextBlock Text="Dark"
+                                   Foreground="#F0F0F0"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.9"/>
+                    </StackPanel>
+                </Grid>
+            </materialDesign:ColorZone>
+
+            <!-- ========================================
+                 MAIN CONTENT AREA
+                 ======================================== -->
+            <Grid Grid.Row="2"
+                  Margin="20">
+                <ContentControl Content="{Binding CurrentViewModel}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"/>
             </Grid>
-        </materialDesign:ColorZone>
 
-        <!-- =========================
-             CONTENT
-             ========================= -->
-        <Grid Grid.Row="2"
-              Margin="20">
-            <ContentControl Content="{Binding CurrentViewModel}"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"/>
+            <!-- ========================================
+                 STATUS BAR
+                 ======================================== -->
+            <Border Grid.Row="3"
+                    Height="36"
+                    Padding="12,6"
+                    BorderBrush="#0B0E10"
+                    BorderThickness="0,1,0,0">
+
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0"
+                                         EndPoint="0,1">
+                        <GradientStop Color="#1A2024"
+                                      Offset="0"/>
+                        <GradientStop Color="#14181B"
+                                      Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{Binding StatusLeftText}"
+                               Foreground="#D6D6D6"
+                               VerticalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+
+                        <Border CornerRadius="14"
+                                Padding="10,4"
+                                Background="#0F1316"
+                                BorderBrush="#2A2A2A"
+                                BorderThickness="1"
+                                VerticalAlignment="Center">
+
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Circle"
+                                                         Width="12"
+                                                         Height="12"
+                                                         Margin="0,0,8,0"
+                                                         Foreground="{Binding StatusBrush}"/>
+
+                                <TextBlock Text="{Binding StatusRightText}"
+                                           Foreground="#D6D6D6"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Margin="10,0,0,0"
+                              VerticalAlignment="Center">
+                            <Button Width="34"
+                                    Height="28"
+                                    ToolTip="View logs"
+                                    Command="{Binding ShowLogsCommand}"
+                                    Style="{StaticResource MaterialDesignToolButton}">
+                                <materialDesign:PackIcon Kind="FileDocumentOutline"
+                                                         Width="18"
+                                                         Height="18"
+                                                         Foreground="#D6D6D6"/>
+                            </Button>
+
+                            <Border Width="18"
+                                    Height="18"
+                                    CornerRadius="9"
+                                    Background="#E81123"
+                                    BorderBrush="#0F1316"
+                                    BorderThickness="2"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,-6,-6,0"
+                                    Visibility="{Binding HasLogs, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                                <TextBlock Text="{Binding LogCount}"
+                                           Foreground="#FFFFFF"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- =========================
-             STATUS BAR (anchored bottom)
-             ========================= -->
-        <Border Grid.Row="3"
-                Height="36"
-                Padding="12,6"
-                BorderBrush="#0B0E10"
-                BorderThickness="0,1,0,0">
+        <!-- ========================================
+             LOG VIEWER DIALOG CONTENT
+             ======================================== -->
+        <materialDesign:DialogHost.DialogContent>
+            <Border Width="1000"
+                    MaxHeight="650"
+                    Padding="16"
+                    Background="{DynamicResource MaterialDesignPaper}"
+                    CornerRadius="10">
 
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0"
-                                     EndPoint="0,1">
-                    <GradientStop Color="#1A2024"
-                                  Offset="0"/>
-                    <GradientStop Color="#14181B"
-                                  Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                    <!-- Header -->
+                    <Grid Grid.Row="0"
+                          Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                <TextBlock Text="{Binding StatusLeftText}"
-                           Foreground="#D6D6D6"
-                           VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="0"
+                                 MinWidth="420"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Search logs (message/category/exception)"
+                                 Text="{Binding LogSearchText, UpdateSourceTrigger=PropertyChanged}"/>
 
-                <Border Grid.Column="1"
-                        CornerRadius="14"
-                        Padding="10,4"
-                        Background="#0F1316"
-                        BorderBrush="#2A2A2A"
-                        BorderThickness="1"
-                        VerticalAlignment="Center">
+                        <ComboBox Grid.Column="1"
+                                  Margin="10,0,0,0"
+                                  MinWidth="170"
+                                  ItemsSource="{Binding LogLevelOptions}"
+                                  SelectedItem="{Binding SelectedLogLevelOption, Mode=TwoWay}"
+                                  DisplayMemberPath="Display"
+                                  ToolTip="Minimum level (inclusive)"
+                                  VerticalAlignment="Center"
+                                  Style="{StaticResource LogLevelComboBoxStyle}"/>
 
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Circle"
-                                                 Width="12"
-                                                 Height="12"
-                                                 Margin="0,0,8,0"
-                                                 Foreground="{Binding StatusBrush}"/>
+                        <Button Grid.Column="2"
+                                Margin="10,0,0,0"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Command="{Binding ClearLogsCommand}">
+                            Clear
+                        </Button>
 
-                        <TextBlock Text="{Binding StatusRightText}"
-                                   Foreground="#D6D6D6"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Border>
-    </Grid>
+                        <Button Grid.Column="3"
+                                Margin="10,0,0,0"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Command="{Binding CloseLogsCommand}">
+                            Close
+                        </Button>
+                    </Grid>
+
+                    <!-- Main -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.2*"/>
+                            <ColumnDefinition Width="1.3*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Logs grid -->
+                        <DataGrid Grid.Column="0"
+          ItemsSource="{Binding LogEntriesView}"
+          SelectedItem="{Binding SelectedLogEntry}"
+          SelectionMode="Single"
+          SelectionUnit="FullRow"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          HeadersVisibility="Column"
+          GridLinesVisibility="None"
+          RowHeight="34"
+          CanUserResizeRows="False"
+          Margin="0,0,12,0"
+          MaxHeight="520"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto">
+
+                            <!-- Important: keep the DataGrid itself from forcing columns to fit -->
+                            <DataGrid.Columns>
+
+                                <DataGridTextColumn Header="Time"
+                            Width="170"
+                            Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                            <Setter Property="TextTrimming" Value="None"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <DataGridTextColumn Header="Level"
+                            Width="110"
+                            Binding="{Binding Level}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                            <Setter Property="TextTrimming" Value="None"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <DataGridTextColumn Header="Category"
+                            Width="260"
+                            Binding="{Binding Category}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                            <Setter Property="TextTrimming" Value="None"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <!-- Message is allowed to be wider than the viewport -->
+                                <DataGridTextColumn Header="Message"
+                            Width="900"
+                            Binding="{Binding Message}">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="NoWrap"/>
+                                            <Setter Property="TextTrimming" Value="None"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Details -->
+                        <Border Grid.Column="1"
+                                Padding="12"
+                                CornerRadius="8"
+                                Background="{DynamicResource MaterialDesignPaper}"
+                                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                BorderThickness="1">
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Details"
+                                           Foreground="{DynamicResource MaterialDesignBody}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="1"
+                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                           Text="{Binding SelectedLogEntry.EventId, StringFormat=EventId: {0}}"
+                                           Opacity="0.9"/>
+
+                                <!-- Exception -->
+                                <StackPanel Grid.Row="2"
+                                            Margin="0,10,0,0">
+                                    <TextBlock Text="Exception"
+                                               Foreground="{DynamicResource MaterialDesignBody}"
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,6"/>
+
+                                    <!-- Avoid binding Exception -> string converter errors:
+                                         Bind to SelectedLogEntry.Exception.ToString via a nested binding fallback -->
+                                    <TextBox IsReadOnly="True"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             MinHeight="120"
+                                             Background="{DynamicResource MaterialDesignPaper}"
+                                             Foreground="{DynamicResource MaterialDesignBody}"
+                                             BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                             BorderThickness="1">
+                                        <TextBox.Text>
+                                            <Binding Path="SelectedLogEntry.Exception"
+                                                     Mode="OneWay"
+                                                     TargetNullValue="—"/>
+                                        </TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+
+                                <TabControl Grid.Row="3"
+                                            Margin="0,10,0,0">
+
+                                    <TabItem Header="Properties">
+                                        <DataGrid ItemsSource="{Binding SelectedLogEntry.Properties}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  HeadersVisibility="Column"
+                                                  GridLinesVisibility="None"
+                                                  CellStyle="{StaticResource LogGridCellStyle}"
+                                                  RowHeight="32"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Key"
+                                                                    Width="160"
+                                                                    Binding="{Binding Key}"/>
+                                                <DataGridTextColumn Header="Value"
+                                                                    Width="*"
+                                                                    Binding="{Binding Value}"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </TabItem>
+
+                                    <TabItem Header="Scopes">
+                                        <DataGrid ItemsSource="{Binding SelectedLogEntry.Scopes}"
+                                                  AutoGenerateColumns="False"
+                                                  IsReadOnly="True"
+                                                  HeadersVisibility="Column"
+                                                  GridLinesVisibility="None"
+                                                  CellStyle="{StaticResource LogGridCellStyle}"
+                                                  RowHeight="32"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Key"
+                                                                    Width="160"
+                                                                    Binding="{Binding Key}"/>
+                                                <DataGridTextColumn Header="Value"
+                                                                    Width="*"
+                                                                    Binding="{Binding Value}"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </TabItem>
+                                </TabControl>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Footer -->
+                    <TextBlock Grid.Row="2"
+                               Margin="0,10,0,0"
+                               Foreground="#9AA4AA"
+                               Opacity="0.9"
+                               Text="Tip: click a row to view exception + structured properties and scopes."/>
+                </Grid>
+            </Border>
+        </materialDesign:DialogHost.DialogContent>
+    </materialDesign:DialogHost>
 </Window>

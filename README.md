@@ -2,12 +2,6 @@
 
 A modern WPF application for cast iron composition analysis and property estimation. Castara provides real-time calculations of carbon equivalent, graphitization potential, and hardness predictions based on chemical composition and section parameters.
 
-## Screenshot
-<img width="1365" height="1002" alt="castara_screenshot" src="https://github.com/user-attachments/assets/e59313ab-3b2e-4a88-804b-f43c11b019c4" />
-
-## Demo
-https://github.com/user-attachments/assets/402ae64c-c2ca-4213-9836-5becfe4af88f
-
 ## Overview
 
 Castara helps metallurgists and engineers analyze cast iron compositions by:
@@ -52,96 +46,6 @@ Castara helps metallurgists and engineers analyze cast iron compositions by:
 - **MVVM Pattern** - Clean separation of concerns
 - **Domain-Driven Design** - Rich domain models and services
 - **Dependency Injection** - Loosely coupled components
-
-### Solution Structure
-
-## Project Structure
-
-```
-Castara/
-├── src/
-│   ├── Castara.Domain/                   # Domain Layer (Active)
-│   │   ├── Composition/                  # Chemical composition models
-│   │   │   ├── CastIronComposition.cs    # Composition value object
-│   │   │   └── CompositionGuards.cs      # Validation logic
-│   │   │
-│   │   └── Estimation/                   # Estimation services
-│   │       ├── Models/
-│   │       │   ├── Inputs/               # Input models
-│   │       │   │   ├── CastIronInputs.cs
-│   │       │   │   └── SectionProfile.cs
-│   │       │   │
-│   │       │   └── Outputs/              # Output models
-│   │       │       ├── CastIronEstimate.cs
-│   │       │       ├── HardnessRange.cs
-│   │       │       ├── RiskFlag.cs
-│   │       │       └── RiskSeverity.cs
-│   │       │
-│   │       ├── Services/                 # Domain services
-│   │       │   ├── ICastIronEstimator.cs
-│   │       │   ├── CastIronEstimator.cs
-│   │       │   └── CastIronEstimationConstants.cs
-│   │       │
-│   │       └── Validation/               # Business rule validation
-|   |           └── CastIronInputsConstraints.cs
-|   |           └── CompositionGuards.cs
-│   │           └── SectionGuards.cs
-│   │
-│   ├── Castara.Wpf/                     # Presentation Layer (Active)
-│   │   ├── Views/                       # XAML views
-│   │   │   ├── CalculationsView.xaml
-│   │   │   └── CalculationsView.xaml.cs
-│   │   │
-│   │   ├── ViewModels/                  # View models
-│   │   │   ├── ShellViewModel.cs
-│   │   │   └── CalculationsViewModel.cs
-│   │   │
-│   │   ├── Infrastructure/              # Cross-cutting concerns
-│   │   │   ├── Abstractions/
-│   │   │   │   └── IThemeAware.cs
-│   │   │   ├── Commands/
-│   │   │   │   └── RelayCommand.cs
-│   │   │   └── Converters/
-│   │   │       └── RiskSeverityToBrushConverter.cs
-│   │   │
-│   │   ├── Services/                    # Application services
-│   │   │   ├── Status/
-│   │   │   │   ├── IStatusService.cs
-│   │   │   │   └── StatusService.cs
-│   │   │   └── Theme/
-│   │   │       ├── IThemeService.cs
-│   │   │       └── ThemeService.cs
-│   │   │
-│   │   ├── Models/                      # UI models
-│   │   │   ├── AppStatusLevel.cs
-│   │   │   └── StatusState.cs
-│   │   │
-│   │   ├── MainWindow.xaml              # Main window
-│   │   ├── MainWindow.xaml.cs
-│   │   ├── App.xaml                     # Application entry point
-│   │   └── App.xaml.cs
-│   │
-│   ├── Castara.Application/             # Application Layer (Staged)
-│   │   └── [Reserved for future CQRS/Mediator patterns]
-│   │
-│   └── Castara.Infrastructure/          # Infrastructure Layer (Staged)
-│       └── [Reserved for future data persistence, external services]
-│
-├── tests/
-│   ├── Castara.Domain.Tests/            # Domain layer tests
-│   │   └── Estimation/
-│   │       └── Services/
-│   │           └── CastIronEstimatorTests.cs
-|   |           └── CastIronEstimatorPropertyTests.cs
-│   │
-│   └── Castara.Wpf.Tests/               # Presentation layer tests
-│       └── ViewModels/         
-│           ├── CalculationsViewModelTests.cs
-│           └── ShellViewModelTests.cs
-│
-├── Castara.sln                          # Solution file
-└── README.md
-```
 
 ### Active Projects
 
@@ -303,8 +207,9 @@ Each flag includes:
 ### Planned Features
 - [ ] **Stock Inventory Integration** - Constrain composition inputs to feed from stock inventory service, ensuring accuracy and traceability to available materials
 - [ ] **Profile Persistence** - Allow saving of section profiles and composition data to database for historical tracking and analysis
-- [ ] **Add Telemetry** - Incorporate logging and events
-- [ ] **Expand Test Coverage** - Incorporate more property-based tests
+- [ ] **Additional Telemetry** - Incorporate domain logging and events
+- [ ] **Separate logging dialog into separate view from main window
+- [ ] **Expand Test Coverage** - Always
 
 ## Contributing
 
