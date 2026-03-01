@@ -42,6 +42,7 @@ Castara helps metallurgists and engineers analyze cast iron compositions by:
 - Responsive Material Design interface
 - Clear visual feedback
 - Easy data entry and clearing
+- Log viewer with search, filtering, and details view
 
 ## Technology Stack
 
