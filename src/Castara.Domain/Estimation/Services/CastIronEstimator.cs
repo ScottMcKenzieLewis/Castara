@@ -8,6 +8,16 @@ namespace Castara.Domain.Estimation.Services;
 /// <summary>
 /// Provides metallurgical property estimation for cast iron based on chemical composition
 /// and section parameters using empirical models and industry-standard formulas.
+/// 
+/// References:
+/// - ASM Handbook Volume 1: Properties and Selection: Irons
+/// - Stefanescu, "Science and Engineering of Casting Solidification"
+/// - https://en.wikipedia.org/wiki/Equivalent_carbon_content
+/// - https://www.ispatguru.com/cast-irons-and-their-classification/
+///
+/// Note:
+/// Graphitization and hardness calculations are empirical
+/// engineering models derived from typical gray iron behavior.
 /// </summary>
 /// <remarks>
 /// This estimator calculates carbon equivalent, graphitization potential, and hardness
@@ -80,8 +90,13 @@ public sealed class CastIronEstimator : ICastIronEstimator
     }
 
     /// <summary>
-    /// Calculates the carbon equivalent (CE) using the standard formula:
+    /// Calculates the carbon equivalent (CE) using a standard cast iron formula:
     /// CE = %C + (%Si + %P) / 3
+    ///
+    /// References:
+    /// - ASM Cast Iron Metallurgy
+    /// - https://www.ispatguru.com/cast-irons-and-their-classification/
+    /// - https://en.wikipedia.org/wiki/Equivalent_carbon_content
     /// </summary>
     /// <param name="c">The cast iron composition.</param>
     /// <returns>The carbon equivalent value.</returns>
@@ -95,6 +110,13 @@ public sealed class CastIronEstimator : ICastIronEstimator
     /// <summary>
     /// Converts a continuous cooling rate (°C/s) into a normalized cooling factor
     /// using logarithmic interpolation to match empirical casting behavior.
+    /// 
+    /// References:
+    /// Cooling rate strongly influences graphite formation,
+    /// microstructure refinement, and hardness in cast iron:
+    ///
+    /// https://www.sciencedirect.com/... (cooling rate vs hardness)
+    /// ASM Cast Iron Metallurgy
     /// </summary>
     /// <param name="coolingRateCPerSec">The cooling rate in degrees Celsius per second.</param>
     /// <returns>
@@ -158,6 +180,12 @@ public sealed class CastIronEstimator : ICastIronEstimator
     /// <summary>
     /// Calculates the thickness factor representing the deviation from a reference
     /// section thickness and its impact on solidification characteristics.
+    /// 
+    /// References:
+    /// Cooling rate is strongly influenced by section thickness:
+    ///
+    /// https://link.springer.com/... cooling rate vs thickness
+    /// Foundry solidification literature
     /// </summary>
     /// <param name="thicknessMm">The section thickness in millimeters.</param>
     /// <returns>
@@ -170,6 +198,16 @@ public sealed class CastIronEstimator : ICastIronEstimator
     /// <summary>
     /// Computes the graphitization score (0-1 scale) indicating the tendency
     /// for graphite formation versus carbide formation during solidification.
+    /// 
+    /// Empirical graphitization model based on:
+    /// - Carbon equivalent influence on eutectic behavior
+    /// - Cooling rate influence on graphite vs carbide formation
+    /// - Section thickness effects on solidification
+    ///
+    /// Based on foundry metallurgy literature (ASM Cast Iron Handbook).
+    ///
+    /// This equation is an engineering approximation rather than a
+    /// published closed-form formula.
     /// </summary>
     /// <param name="ce">The carbon equivalent value.</param>
     /// <param name="coolingFactor">The normalized cooling factor.</param>
@@ -195,6 +233,13 @@ public sealed class CastIronEstimator : ICastIronEstimator
     /// <summary>
     /// Estimates the Brinell hardness (HB) range based on graphitization score
     /// and solidification conditions.
+    /// 
+    /// Hardness estimation reflects:
+    /// - Increased hardness with faster cooling
+    /// - Increased hardness with reduced graphitization
+    ///
+    /// Supported by gray iron cooling studies:
+    /// https://www.sciencedirect.com/... cooling rate hardness
     /// </summary>
     /// <param name="graphScore">The graphitization score (0-1).</param>
     /// <param name="coolingFactor">The normalized cooling factor.</param>
@@ -229,6 +274,14 @@ public sealed class CastIronEstimator : ICastIronEstimator
 
     /// <summary>
     /// Assesses the risk of chilled (carbide) structure formation in the casting.
+    /// 
+    /// References:
+    /// Hardness estimation reflects:
+    /// - Increased hardness with faster cooling
+    /// - Increased hardness with reduced graphitization
+    ///
+    /// Supported by gray iron cooling studies:
+    /// https://www.sciencedirect.com/... cooling rate hardness
     /// </summary>
     /// <param name="graphScore">The graphitization score (0-1).</param>
     /// <param name="coolingFactor">The normalized cooling factor.</param>

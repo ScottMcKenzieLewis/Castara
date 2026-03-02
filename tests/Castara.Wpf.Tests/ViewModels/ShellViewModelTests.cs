@@ -597,3 +597,4 @@ public sealed class ShellViewModelTests
             Exception: ex,
             Properties: Array.Empty<KeyValuePair<string, object?>>(),
             Scopes: Array.Empty<KeyValuePair<string, object?>>());
+}
