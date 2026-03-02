@@ -214,10 +214,11 @@ Each flag includes:
 ## TODO / Roadmap
 
 ### Planned Features
+- [ ] **UI Settings** - Allow the use of US Customary Units
 - [ ] **Stock Inventory Integration** - Constrain composition inputs to feed from stock inventory service, ensuring accuracy and traceability to available materials
 - [ ] **Profile Persistence** - Allow saving of section profiles and composition data to database for historical tracking and analysis
 - [ ] **Additional Telemetry** - Incorporate domain logging and events
-- [ ] **Separate logging dialog into separate view from main window
+- [ ] **Logging UI** Separate logging dialog into separate view from main window
 - [ ] **Expand Test Coverage** - Always
 
 ## Contributing
