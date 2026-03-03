@@ -28,6 +28,7 @@ namespace Castara.Wpf.ViewModels;
 ///   <item><description>Theme switching (Dark/Light mode) across Material Design and custom visualizations</description></item>
 ///   <item><description>View hosting and navigation</description></item>
 ///   <item><description>Application status display with visual indicators</description></item>
+///   <item><description>Unit system selection and propagation</description></item>
 ///   <item><description>Log viewing with filtering, searching, and sorting capabilities</description></item>
 ///   <item><description>Coordination between multiple view models and services</description></item>
 /// </list>
@@ -49,238 +50,36 @@ namespace Castara.Wpf.ViewModels;
 /// </remarks>
 public sealed class ShellViewModel : INotifyPropertyChanged
 {
+    // ============================================================
+    // Fields
+    // ============================================================
+
+    private readonly IThemeService _themeService;
+    private readonly IStatusService _statusService;
+    private readonly IThemeAware _themeAware;
+    private readonly IUnitAware _unitAware;
+
+    private bool _isDarkMode;
+    private object? _currentViewModel;
+    private UnitSystem _unitSystem = UnitSystem.Standard;
+
+    private bool _isLogsOpen;
+    private string _logSearchText = string.Empty;
+    private LogLevel? _selectedLogLevel;
+    private LogLevelOption _selectedLogLevelOption = LogLevelOption.All;
+    private LogEntry? _selectedLogEntry;
+
+    // ============================================================
+    // Events
+    // ============================================================
+
     /// <summary>
     /// Occurs when a property value changes, supporting WPF data binding.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private readonly IThemeService _themeService;
-    private readonly IStatusService _statusService;
-    private readonly IThemeAware _calculationsViewModel;
-
-    /// <summary>
-    /// Gets the observable log store for application diagnostics and telemetry.
-    /// </summary>
-    /// <value>
-    /// The log store containing all application log entries with thread-safe access.
-    /// </value>
-    public IObservableLogStore LogStore { get; }
-
     // ============================================================
-    // Log Dialog State and View
-    // ============================================================
-
-    private bool _isLogsOpen;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the logs dialog is currently open.
-    /// </summary>
-    /// <value>
-    /// <c>true</c> if the logs dialog is open; otherwise, <c>false</c>.
-    /// </value>
-    public bool IsLogsOpen
-    {
-        get => _isLogsOpen;
-        set
-        {
-            if (_isLogsOpen == value) return;
-            _isLogsOpen = value;
-            Notify(nameof(IsLogsOpen));
-        }
-    }
-
-    /// <summary>
-    /// Gets the total number of log entries currently in the store.
-    /// </summary>
-    /// <value>
-    /// The count of all log entries, regardless of current filter settings.
-    /// </value>
-    public int LogCount => LogStore.Entries.Count;
-
-    /// <summary>
-    /// Gets a value indicating whether any log entries exist in the store.
-    /// </summary>
-    /// <value>
-    /// <c>true</c> if at least one log entry exists; otherwise, <c>false</c>.
-    /// </value>
-    public bool HasLogs => LogCount > 0;
-
-    private string _logSearchText = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the search text for filtering log entries.
-    /// </summary>
-    /// <value>
-    /// A string to search within log message, category, and exception text.
-    /// Search is case-insensitive.
-    /// </value>
-    /// <remarks>
-    /// When this property changes, the <see cref="LogEntriesView"/> is automatically
-    /// refreshed to apply the new filter criteria.
-    /// </remarks>
-    public string LogSearchText
-    {
-        get => _logSearchText;
-        set
-        {
-            var next = value ?? string.Empty;
-            if (string.Equals(_logSearchText, next, StringComparison.Ordinal)) return;
-            _logSearchText = next;
-            Notify(nameof(LogSearchText));
-            LogEntriesView.Refresh();
-        }
-    }
-
-    private LogLevel? _selectedLogLevel;
-
-    /// <summary>
-    /// Gets or sets the minimum log level to display (inclusive filter).
-    /// </summary>
-    /// <value>
-    /// A <see cref="LogLevel"/> value, or <c>null</c> to show all levels.
-    /// </value>
-    /// <remarks>
-    /// This property provides exact level matching (not minimum level filtering).
-    /// When set, only entries matching this specific level are shown.
-    /// Set to <c>null</c> to display all log levels.
-    /// </remarks>
-    public LogLevel? SelectedLogLevel
-    {
-        get => _selectedLogLevel;
-        set
-        {
-            if (_selectedLogLevel == value) return;
-            _selectedLogLevel = value;
-            Notify(nameof(SelectedLogLevel));
-
-            // Keep SelectedLogLevelOption in sync for UI binding
-            SelectedLogLevelOption = LogLevelOptions.First(o => o.Level == value);
-
-            LogEntriesView.Refresh();
-        }
-    }
-
-    private LogLevelOption _selectedLogLevelOption = LogLevelOption.All;
-
-    /// <summary>
-    /// Gets or sets the selected log level option for UI binding.
-    /// </summary>
-    /// <value>
-    /// A <see cref="LogLevelOption"/> representing the current filter selection.
-    /// </value>
-    /// <remarks>
-    /// This property is synchronized with <see cref="SelectedLogLevel"/> and provides
-    /// a display-friendly option for ComboBox binding.
-    /// </remarks>
-    public LogLevelOption SelectedLogLevelOption
-    {
-        get => _selectedLogLevelOption;
-        set
-        {
-            if (Equals(_selectedLogLevelOption, value)) return;
-            _selectedLogLevelOption = value;
-            Notify(nameof(SelectedLogLevelOption));
-
-            // Drive filter through canonical SelectedLogLevel
-            _selectedLogLevel = value.Level;
-            Notify(nameof(SelectedLogLevel));
-
-            LogEntriesView.Refresh();
-        }
-    }
-
-    private LogEntry? _selectedLogEntry;
-
-    /// <summary>
-    /// Gets or sets the currently selected log entry in the log viewer.
-    /// </summary>
-    /// <value>
-    /// The selected <see cref="LogEntry"/>, or <c>null</c> if no entry is selected.
-    /// </value>
-    /// <remarks>
-    /// This property is typically bound to the SelectedItem of a DataGrid or ListBox
-    /// to display detailed information about a specific log entry.
-    /// </remarks>
-    public LogEntry? SelectedLogEntry
-    {
-        get => _selectedLogEntry;
-        set
-        {
-            if (Equals(_selectedLogEntry, value)) return;
-            _selectedLogEntry = value;
-            Notify(nameof(SelectedLogEntry));
-        }
-    }
-
-    /// <summary>
-    /// Gets a filtered and sorted collection view over the log entries for UI binding.
-    /// </summary>
-    /// <value>
-    /// An <see cref="ICollectionView"/> that supports filtering, sorting, and change notification.
-    /// </value>
-    /// <remarks>
-    /// <para>
-    /// This view is configured with:
-    /// <list type="bullet">
-    ///   <item><description>Filtering by log level and search text via <see cref="LogFilter"/></description></item>
-    ///   <item><description>Descending sort by timestamp (newest entries first)</description></item>
-    ///   <item><description>Automatic refresh when filter criteria change</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Bind DataGrid or ListBox controls directly to this property for real-time
-    /// filtered log display.
-    /// </para>
-    /// </remarks>
-    public ICollectionView LogEntriesView { get; }
-
-    /// <summary>
-    /// Gets the available log level filter options for UI binding.
-    /// </summary>
-    /// <value>
-    /// A read-only list of <see cref="LogLevelOption"/> instances including "All" and each log level.
-    /// </value>
-    /// <remarks>
-    /// Bind a ComboBox's ItemsSource to this property with DisplayMemberPath="Display"
-    /// for a user-friendly log level filter.
-    /// </remarks>
-    public IReadOnlyList<LogLevelOption> LogLevelOptions { get; } = new[]
-    {
-        LogLevelOption.All,
-        new LogLevelOption("Trace", LogLevel.Trace),
-        new LogLevelOption("Debug", LogLevel.Debug),
-        new LogLevelOption("Information", LogLevel.Information),
-        new LogLevelOption("Warning", LogLevel.Warning),
-        new LogLevelOption("Error", LogLevel.Error),
-        new LogLevelOption("Critical", LogLevel.Critical),
-    };
-
-    /// <summary>
-    /// Gets the command to show the logs dialog.
-    /// </summary>
-    /// <value>
-    /// A command that sets <see cref="IsLogsOpen"/> to <c>true</c>.
-    /// </value>
-    public ICommand ShowLogsCommand { get; }
-
-    /// <summary>
-    /// Gets the command to close the logs dialog.
-    /// </summary>
-    /// <value>
-    /// A command that sets <see cref="IsLogsOpen"/> to <c>false</c>.
-    /// </value>
-    public ICommand CloseLogsCommand { get; }
-
-    /// <summary>
-    /// Gets the command to clear all log entries from the store.
-    /// </summary>
-    /// <value>
-    /// A command that clears the log store and resets selection and counts.
-    /// </value>
-    public ICommand ClearLogsCommand { get; }
-
-    // ============================================================
-    // Construction
+    // Constructor
     // ============================================================
 
     /// <summary>
@@ -292,8 +91,11 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     /// <param name="statusService">
     /// The status service that manages application-wide status messages and levels.
     /// </param>
-    /// <param name="calculationsViewModel">
+    /// <param name="themeAware">
     /// The calculations view model that implements <see cref="IThemeAware"/> for chart theme coordination.
+    /// </param>
+    /// <param name="unitAware">
+    /// The calculations view model that implements <see cref="IUnitAware"/> for unit system coordination.
     /// </param>
     /// <param name="logStore">
     /// The observable log store for application diagnostics and telemetry.
@@ -322,15 +124,17 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     public ShellViewModel(
         IThemeService themeService,
         IStatusService statusService,
-        IThemeAware calculationsViewModel,
+        IThemeAware themeAware,
+        IUnitAware unitAware,
         IObservableLogStore logStore)
     {
         _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
-        _calculationsViewModel = calculationsViewModel ?? throw new ArgumentNullException(nameof(calculationsViewModel));
+        _themeAware = themeAware ?? throw new ArgumentNullException(nameof(themeAware));
+        _unitAware = unitAware ?? throw new ArgumentNullException(nameof(unitAware));
         LogStore = logStore ?? throw new ArgumentNullException(nameof(logStore));
 
-        CurrentViewModel = calculationsViewModel;
+        CurrentViewModel = themeAware;
 
         // Build the collection view over the store entries
         LogEntriesView = CollectionViewSource.GetDefaultView(LogStore.Entries);
@@ -356,6 +160,9 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
         // Default filter: All levels
         SelectedLogLevelOption = LogLevelOption.All;
+
+        // Default units: Standard
+        UnitSystem = UnitSystem.Standard;
 
         // Initialize commands
         ShowLogsCommand = new RelayCommand(() => IsLogsOpen = true);
@@ -392,88 +199,42 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     }
 
     // ============================================================
-    // Filtering Logic
+    // Properties - View Hosting
     // ============================================================
 
     /// <summary>
-    /// Filters log entries based on selected log level and search text.
+    /// Gets the current view model being hosted in the shell's content area.
     /// </summary>
-    /// <param name="obj">The object to filter, expected to be a <see cref="LogEntry"/>.</param>
-    /// <returns>
-    /// <c>true</c> if the log entry passes all filter criteria; otherwise, <c>false</c>.
-    /// </returns>
+    /// <value>
+    /// The current view model instance, typically implementing <see cref="IThemeAware"/>.
+    /// </value>
     /// <remarks>
     /// <para>
-    /// Filter criteria applied in order:
-    /// <list type="number">
-    ///   <item><description>Type check: Must be a <see cref="LogEntry"/></description></item>
-    ///   <item><description>Log level: Must match <see cref="SelectedLogLevel"/> if not null</description></item>
-    ///   <item><description>Search text: Must be found in message, category, or exception text (case-insensitive)</description></item>
-    /// </list>
+    /// This property enables view switching and navigation within the application.
+    /// Currently, the application hosts the calculations view model, but this design
+    /// allows for future expansion to multiple views or navigation scenarios.
     /// </para>
     /// <para>
-    /// This method is used as the filter predicate for <see cref="LogEntriesView"/>.
+    /// The hosted view model is set via dependency injection in the constructor,
+    /// ensuring proper initialization and testability.
     /// </para>
     /// </remarks>
-    private bool LogFilter(object obj)
+    public object? CurrentViewModel
     {
-        if (obj is not LogEntry entry)
-            return false;
+        get => _currentViewModel;
+        private set
+        {
+            if (Equals(_currentViewModel, value))
+                return;
 
-        // Exact level filter (not minimum level)
-        var level = SelectedLogLevelOption?.Level;
-        if (level is { } l && entry.Level != l)
-            return false;
-
-        // Search text filter
-        var q = (LogSearchText ?? string.Empty).Trim();
-        if (q.Length == 0)
-            return true;
-
-        return Contains(entry.Message, q)
-            || Contains(entry.Category, q)
-            || (entry.Exception is not null && Contains(entry.Exception.ToString(), q));
-    }
-
-    /// <summary>
-    /// Performs case-insensitive substring search.
-    /// </summary>
-    /// <param name="haystack">The string to search within.</param>
-    /// <param name="needle">The substring to search for.</param>
-    /// <returns>
-    /// <c>true</c> if <paramref name="needle"/> is found within <paramref name="haystack"/>;
-    /// otherwise, <c>false</c>.
-    /// </returns>
-    private static bool Contains(string? haystack, string needle)
-        => !string.IsNullOrEmpty(haystack)
-           && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
-
-    /// <summary>
-    /// Represents a log level filter option for UI binding.
-    /// </summary>
-    /// <param name="Display">The display text for the option.</param>
-    /// <param name="Level">
-    /// The associated <see cref="LogLevel"/>, or <c>null</c> for "All" option.
-    /// </param>
-    public sealed record LogLevelOption(string Display, LogLevel? Level)
-    {
-        /// <summary>
-        /// Gets the "All" log level option that shows entries of all levels.
-        /// </summary>
-        public static LogLevelOption All { get; } = new("All", null);
-
-        /// <summary>
-        /// Returns the display text for this option.
-        /// </summary>
-        /// <returns>The display text.</returns>
-        public override string ToString() => Display;
+            _currentViewModel = value;
+            Notify(nameof(CurrentViewModel));
+        }
     }
 
     // ============================================================
-    // Theme Toggle
+    // Properties - Theme
     // ============================================================
-
-    private bool _isDarkMode;
 
     /// <summary>
     /// Gets or sets a value indicating whether dark mode is enabled for the application.
@@ -508,50 +269,89 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
             // Single synchronization point for all theme changes
             _themeService.SetDark(value);
-            _calculationsViewModel.SetTheme(value);
+            _themeAware.SetTheme(value);
 
             Notify(nameof(IsDarkMode));
         }
     }
 
     // ============================================================
-    // Hosted ViewModel
+    // Properties - Unit System
     // ============================================================
 
-    private object? _currentViewModel;
-
     /// <summary>
-    /// Gets the current view model being hosted in the shell's content area.
+    /// Gets or sets the unit system used throughout the application.
     /// </summary>
     /// <value>
-    /// The current view model instance, typically implementing <see cref="IThemeAware"/>.
+    /// The active <see cref="Models.UnitSystem"/> determining measurement units
+    /// (Standard or American Standard).
     /// </value>
     /// <remarks>
     /// <para>
-    /// This property enables view switching and navigation within the application.
-    /// Currently, the application hosts the calculations view model, but this design
-    /// allows for future expansion to multiple views or navigation scenarios.
+    /// This property serves as the synchronization point for unit system changes,
+    /// automatically propagating changes to unit-aware components via <see cref="IUnitAware"/>.
     /// </para>
     /// <para>
-    /// The hosted view model is set via dependency injection in the constructor,
-    /// ensuring proper initialization and testability.
+    /// When changed, the property updates:
+    /// <list type="bullet">
+    ///   <item><description>The calculations view model's unit system</description></item>
+    ///   <item><description>Related UI bindings (<see cref="IsAmericanStandard"/>, <see cref="UnitSystemLeftText"/>, <see cref="UnitSystemRightText"/>)</description></item>
+    /// </list>
     /// </para>
     /// </remarks>
-    public object? CurrentViewModel
+    public UnitSystem UnitSystem
     {
-        get => _currentViewModel;
-        private set
+        get => _unitSystem;
+        set
         {
-            if (Equals(_currentViewModel, value))
-                return;
+            if (_unitSystem == value) return;
+            _unitSystem = value;
 
-            _currentViewModel = value;
-            Notify(nameof(CurrentViewModel));
+            // Propagate to calculations VM
+            _unitAware.UnitSystem = value;
+
+            Notify(nameof(UnitSystem));
+            Notify(nameof(IsAmericanStandard));
+            Notify(nameof(UnitSystemLeftText));
+            Notify(nameof(UnitSystemRightText));
         }
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether American Standard units are active.
+    /// </summary>
+    /// <value>
+    /// <c>true</c> if American Standard units are active; otherwise, <c>false</c> for Standard units.
+    /// </value>
+    /// <remarks>
+    /// This property provides a boolean binding convenience for toggle controls.
+    /// It delegates to <see cref="UnitSystem"/> for the actual state management.
+    /// </remarks>
+    public bool IsAmericanStandard
+    {
+        get => UnitSystem == UnitSystem.AmericanStandard;
+        set => UnitSystem = value ? UnitSystem.AmericanStandard : UnitSystem.Standard;
+    }
+
+    /// <summary>
+    /// Gets the left-side unit system label text for the UI.
+    /// </summary>
+    /// <value>
+    /// Always returns "Units".
+    /// </value>
+    public string UnitSystemLeftText => "Units";
+
+    /// <summary>
+    /// Gets the right-side unit system display text for the UI.
+    /// </summary>
+    /// <value>
+    /// Returns "American" when <see cref="IsAmericanStandard"/> is <c>true</c>;
+    /// otherwise, returns "Standard".
+    /// </value>
+    public string UnitSystemRightText => IsAmericanStandard ? "American" : "Standard";
+
     // ============================================================
-    // Status Bindings
+    // Properties - Status Display
     // ============================================================
 
     /// <summary>
@@ -622,7 +422,279 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         };
 
     // ============================================================
-    // Notify Helper
+    // Properties - Log Management
+    // ============================================================
+
+    /// <summary>
+    /// Gets the observable log store for application diagnostics and telemetry.
+    /// </summary>
+    /// <value>
+    /// The log store containing all application log entries with thread-safe access.
+    /// </value>
+    public IObservableLogStore LogStore { get; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the logs dialog is currently open.
+    /// </summary>
+    /// <value>
+    /// <c>true</c> if the logs dialog is open; otherwise, <c>false</c>.
+    /// </value>
+    public bool IsLogsOpen
+    {
+        get => _isLogsOpen;
+        set
+        {
+            if (_isLogsOpen == value) return;
+            _isLogsOpen = value;
+            Notify(nameof(IsLogsOpen));
+        }
+    }
+
+    /// <summary>
+    /// Gets the total number of log entries currently in the store.
+    /// </summary>
+    /// <value>
+    /// The count of all log entries, regardless of current filter settings.
+    /// </value>
+    public int LogCount => LogStore.Entries.Count;
+
+    /// <summary>
+    /// Gets a value indicating whether any log entries exist in the store.
+    /// </summary>
+    /// <value>
+    /// <c>true</c> if at least one log entry exists; otherwise, <c>false</c>.
+    /// </value>
+    public bool HasLogs => LogCount > 0;
+
+    /// <summary>
+    /// Gets or sets the search text for filtering log entries.
+    /// </summary>
+    /// <value>
+    /// A string to search within log message, category, and exception text.
+    /// Search is case-insensitive.
+    /// </value>
+    /// <remarks>
+    /// When this property changes, the <see cref="LogEntriesView"/> is automatically
+    /// refreshed to apply the new filter criteria.
+    /// </remarks>
+    public string LogSearchText
+    {
+        get => _logSearchText;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (string.Equals(_logSearchText, next, StringComparison.Ordinal)) return;
+            _logSearchText = next;
+            Notify(nameof(LogSearchText));
+            LogEntriesView.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the minimum log level to display (inclusive filter).
+    /// </summary>
+    /// <value>
+    /// A <see cref="LogLevel"/> value, or <c>null</c> to show all levels.
+    /// </value>
+    /// <remarks>
+    /// This property provides exact level matching (not minimum level filtering).
+    /// When set, only entries matching this specific level are shown.
+    /// Set to <c>null</c> to display all log levels.
+    /// </remarks>
+    public LogLevel? SelectedLogLevel
+    {
+        get => _selectedLogLevel;
+        set
+        {
+            if (_selectedLogLevel == value) return;
+            _selectedLogLevel = value;
+            Notify(nameof(SelectedLogLevel));
+
+            // Keep SelectedLogLevelOption in sync for UI binding
+            SelectedLogLevelOption = LogLevelOptions.First(o => o.Level == value);
+
+            LogEntriesView.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the selected log level option for UI binding.
+    /// </summary>
+    /// <value>
+    /// A <see cref="LogLevelOption"/> representing the current filter selection.
+    /// </value>
+    /// <remarks>
+    /// This property is synchronized with <see cref="SelectedLogLevel"/> and provides
+    /// a display-friendly option for ComboBox binding.
+    /// </remarks>
+    public LogLevelOption SelectedLogLevelOption
+    {
+        get => _selectedLogLevelOption;
+        set
+        {
+            if (Equals(_selectedLogLevelOption, value)) return;
+            _selectedLogLevelOption = value;
+            Notify(nameof(SelectedLogLevelOption));
+
+            // Drive filter through canonical SelectedLogLevel
+            _selectedLogLevel = value.Level;
+            Notify(nameof(SelectedLogLevel));
+
+            LogEntriesView.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the currently selected log entry in the log viewer.
+    /// </summary>
+    /// <value>
+    /// The selected <see cref="LogEntry"/>, or <c>null</c> if no entry is selected.
+    /// </value>
+    /// <remarks>
+    /// This property is typically bound to the SelectedItem of a DataGrid or ListBox
+    /// to display detailed information about a specific log entry.
+    /// </remarks>
+    public LogEntry? SelectedLogEntry
+    {
+        get => _selectedLogEntry;
+        set
+        {
+            if (Equals(_selectedLogEntry, value)) return;
+            _selectedLogEntry = value;
+            Notify(nameof(SelectedLogEntry));
+        }
+    }
+
+    /// <summary>
+    /// Gets a filtered and sorted collection view over the log entries for UI binding.
+    /// </summary>
+    /// <value>
+    /// An <see cref="ICollectionView"/> that supports filtering, sorting, and change notification.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// This view is configured with:
+    /// <list type="bullet">
+    ///   <item><description>Filtering by log level and search text via <see cref="LogFilter"/></description></item>
+    ///   <item><description>Descending sort by timestamp (newest entries first)</description></item>
+    ///   <item><description>Automatic refresh when filter criteria change</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Bind DataGrid or ListBox controls directly to this property for real-time
+    /// filtered log display.
+    /// </para>
+    /// </remarks>
+    public ICollectionView LogEntriesView { get; }
+
+    /// <summary>
+    /// Gets the available log level filter options for UI binding.
+    /// </summary>
+    /// <value>
+    /// A read-only list of <see cref="LogLevelOption"/> instances including "All" and each log level.
+    /// </value>
+    /// <remarks>
+    /// Bind a ComboBox's ItemsSource to this property with DisplayMemberPath="Display"
+    /// for a user-friendly log level filter.
+    /// </remarks>
+    public IReadOnlyList<LogLevelOption> LogLevelOptions { get; } = new[]
+    {
+        LogLevelOption.All,
+        new LogLevelOption("Trace", LogLevel.Trace),
+        new LogLevelOption("Debug", LogLevel.Debug),
+        new LogLevelOption("Information", LogLevel.Information),
+        new LogLevelOption("Warning", LogLevel.Warning),
+        new LogLevelOption("Error", LogLevel.Error),
+        new LogLevelOption("Critical", LogLevel.Critical),
+    };
+
+    // ============================================================
+    // Commands
+    // ============================================================
+
+    /// <summary>
+    /// Gets the command to show the logs dialog.
+    /// </summary>
+    /// <value>
+    /// A command that sets <see cref="IsLogsOpen"/> to <c>true</c>.
+    /// </value>
+    public ICommand ShowLogsCommand { get; }
+
+    /// <summary>
+    /// Gets the command to close the logs dialog.
+    /// </summary>
+    /// <value>
+    /// A command that sets <see cref="IsLogsOpen"/> to <c>false</c>.
+    /// </value>
+    public ICommand CloseLogsCommand { get; }
+
+    /// <summary>
+    /// Gets the command to clear all log entries from the store.
+    /// </summary>
+    /// <value>
+    /// A command that clears the log store and resets selection and counts.
+    /// </value>
+    public ICommand ClearLogsCommand { get; }
+
+    // ============================================================
+    // Private Methods - Filtering
+    // ============================================================
+
+    /// <summary>
+    /// Filters log entries based on selected log level and search text.
+    /// </summary>
+    /// <param name="obj">The object to filter, expected to be a <see cref="LogEntry"/>.</param>
+    /// <returns>
+    /// <c>true</c> if the log entry passes all filter criteria; otherwise, <c>false</c>.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Filter criteria applied in order:
+    /// <list type="number">
+    ///   <item><description>Type check: Must be a <see cref="LogEntry"/></description></item>
+    ///   <item><description>Log level: Must match <see cref="SelectedLogLevel"/> if not null</description></item>
+    ///   <item><description>Search text: Must be found in message, category, or exception text (case-insensitive)</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// This method is used as the filter predicate for <see cref="LogEntriesView"/>.
+    /// </para>
+    /// </remarks>
+    private bool LogFilter(object obj)
+    {
+        if (obj is not LogEntry entry)
+            return false;
+
+        // Exact level filter (not minimum level)
+        var level = SelectedLogLevelOption?.Level;
+        if (level is { } l && entry.Level != l)
+            return false;
+
+        // Search text filter
+        var q = (LogSearchText ?? string.Empty).Trim();
+        if (q.Length == 0)
+            return true;
+
+        return Contains(entry.Message, q)
+            || Contains(entry.Category, q)
+            || (entry.Exception is not null && Contains(entry.Exception.ToString(), q));
+    }
+
+    /// <summary>
+    /// Performs case-insensitive substring search.
+    /// </summary>
+    /// <param name="haystack">The string to search within.</param>
+    /// <param name="needle">The substring to search for.</param>
+    /// <returns>
+    /// <c>true</c> if <paramref name="needle"/> is found within <paramref name="haystack"/>;
+    /// otherwise, <c>false</c>.
+    /// </returns>
+    private static bool Contains(string? haystack, string needle)
+        => !string.IsNullOrEmpty(haystack)
+           && haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    // ============================================================
+    // Private Methods - Property Change Notification
     // ============================================================
 
     /// <summary>
@@ -635,4 +707,29 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     /// </remarks>
     private void Notify(string name)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    // ============================================================
+    // Nested Types
+    // ============================================================
+
+    /// <summary>
+    /// Represents a log level filter option for UI binding.
+    /// </summary>
+    /// <param name="Display">The display text for the option.</param>
+    /// <param name="Level">
+    /// The associated <see cref="LogLevel"/>, or <c>null</c> for "All" option.
+    /// </param>
+    public sealed record LogLevelOption(string Display, LogLevel? Level)
+    {
+        /// <summary>
+        /// Gets the "All" log level option that shows entries of all levels.
+        /// </summary>
+        public static LogLevelOption All { get; } = new("All", null);
+
+        /// <summary>
+        /// Returns the display text for this option.
+        /// </summary>
+        /// <returns>The display text.</returns>
+        public override string ToString() => Display;
+    }
 }

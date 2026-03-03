@@ -356,11 +356,11 @@
             </Border>
 
             <!-- ========================================
-                 TOP TOOLBAR (Theme Toggle)
-                 ======================================== -->
+     TOP TOOLBAR (Units + Theme Togles)
+     ======================================== -->
             <materialDesign:ColorZone Grid.Row="1"
-                                      Mode="PrimaryDark"
-                                      Padding="16">
+                          Mode="PrimaryDark"
+                          Padding="16">
 
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -369,30 +369,120 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Text="Workbench"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"
-                               Opacity="0.9"/>
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"
+                   Opacity="0.9"/>
 
                     <StackPanel Grid.Column="1"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center">
 
-                        <TextBlock Text="Light"
-                                   Foreground="#F0F0F0"
-                                   Margin="0,0,8,0"
-                                   VerticalAlignment="Center"
-                                   Opacity="0.9"/>
+                        <!-- =========================
+     Units Toggle (Bordered + Icon + Animated Border Color)
+     ========================= -->
+                        <Border CornerRadius="18"
+        Padding="14,6"
+        Margin="0,0,18,0"
+        Background="#0F1316"
+        BorderThickness="1">
 
-                        <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      IsChecked="{Binding IsDarkMode}"
-                                      VerticalAlignment="Center"/>
+                            <!-- IMPORTANT: BorderBrush must be a SolidColorBrush so we can animate Color -->
+                            <Border.BorderBrush>
+                                <SolidColorBrush Color="#2A2A2A"/>
+                            </Border.BorderBrush>
 
-                        <TextBlock Text="Dark"
-                                   Foreground="#F0F0F0"
-                                   Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Opacity="0.9"/>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+
+                                        <!-- When American Standard is ON -->
+                                        <DataTrigger Binding="{Binding IsAmericanStandard}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <ColorAnimation Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
+                                                To="#4A90E2"
+                                                Duration="0:0:0.18" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <ColorAnimation Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
+                                                To="#2A2A2A"
+                                                Duration="0:0:0.18" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <StackPanel Orientation="Horizontal"
+                VerticalAlignment="Center">
+
+                                <!-- Small icon (choose any PackIcon Kind you like) -->
+                                <materialDesign:PackIcon Kind="Ruler"
+                                 Width="16"
+                                 Height="16"
+                                 Foreground="#D6D6D6"
+                                 Margin="0,0,8,0"
+                                 VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Units"
+                   FontWeight="SemiBold"
+                   Foreground="#D6D6D6"
+                   Margin="0,0,14,0"
+                   VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Standard"
+                   Foreground="#F0F0F0"
+                   Margin="0,0,8,0"
+                   VerticalAlignment="Center"
+                   Opacity="0.9"/>
+
+                                <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                      IsChecked="{Binding IsAmericanStandard}"
+                      VerticalAlignment="Center"
+                      ToolTip="Switch between Standard and American Standard units"/>
+
+                                <TextBlock Text="American"
+                   Foreground="#F0F0F0"
+                   Margin="8,0,0,0"
+                   VerticalAlignment="Center"
+                   Opacity="0.9"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- =========================
+                 Theme Toggle (Existing)
+                 ========================= -->
+                        <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center">
+
+                            <TextBlock Text="Light"
+                           Foreground="#F0F0F0"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           Opacity="0.9"/>
+
+                            <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                              IsChecked="{Binding IsDarkMode}"
+                              VerticalAlignment="Center"
+                              ToolTip="Switch between light and dark theme"/>
+
+                            <TextBlock Text="Dark"
+                           Foreground="#F0F0F0"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Opacity="0.9"/>
+                        </StackPanel>
+
                     </StackPanel>
                 </Grid>
             </materialDesign:ColorZone>
@@ -565,27 +655,27 @@
 
                         <!-- Logs grid -->
                         <DataGrid Grid.Column="0"
-          ItemsSource="{Binding LogEntriesView}"
-          SelectedItem="{Binding SelectedLogEntry}"
-          SelectionMode="Single"
-          SelectionUnit="FullRow"
-          AutoGenerateColumns="False"
-          IsReadOnly="True"
-          HeadersVisibility="Column"
-          GridLinesVisibility="None"
-          RowHeight="34"
-          CanUserResizeRows="False"
-          Margin="0,0,12,0"
-          MaxHeight="520"
-          ScrollViewer.VerticalScrollBarVisibility="Auto"
-          ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                                  ItemsSource="{Binding LogEntriesView}"
+                                  SelectedItem="{Binding SelectedLogEntry}"
+                                  SelectionMode="Single"
+                                  SelectionUnit="FullRow"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="None"
+                                  RowHeight="34"
+                                  CanUserResizeRows="False"
+                                  Margin="0,0,12,0"
+                                  MaxHeight="520"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto">
 
                             <!-- Important: keep the DataGrid itself from forcing columns to fit -->
                             <DataGrid.Columns>
 
                                 <DataGridTextColumn Header="Time"
-                            Width="170"
-                            Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}">
+                                                    Width="170"
+                                                    Binding="{Binding Timestamp, StringFormat={}{0:yyyy-MM-dd HH:mm:ss.fff}}">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="NoWrap"/>
@@ -595,8 +685,8 @@
                                 </DataGridTextColumn>
 
                                 <DataGridTextColumn Header="Level"
-                            Width="110"
-                            Binding="{Binding Level}">
+                                                    Width="110"
+                                                    Binding="{Binding Level}">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="NoWrap"/>
@@ -606,8 +696,8 @@
                                 </DataGridTextColumn>
 
                                 <DataGridTextColumn Header="Category"
-                            Width="260"
-                            Binding="{Binding Category}">
+                                                    Width="260"
+                                                    Binding="{Binding Category}">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="NoWrap"/>
@@ -618,8 +708,8 @@
 
                                 <!-- Message is allowed to be wider than the viewport -->
                                 <DataGridTextColumn Header="Message"
-                            Width="900"
-                            Binding="{Binding Message}">
+                                                    Width="900"
+                                                    Binding="{Binding Message}">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="NoWrap"/>

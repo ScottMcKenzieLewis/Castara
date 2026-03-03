@@ -241,6 +241,9 @@ public partial class App : Application
         // Register all theme-aware components for coordinated theme updates
         services.AddSingleton<IThemeAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
 
+        // Register all unit-aware components for unit related calculations
+        services.AddSingleton<IUnitAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
+
         // --------------------
         // Windows / Views
         // --------------------

@@ -108,8 +108,7 @@
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -137,8 +136,7 @@
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -166,8 +164,7 @@
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -195,8 +192,7 @@
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -224,8 +220,7 @@
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -246,7 +241,8 @@
                     <!-- Thickness -->
                     <StackPanel Grid.Column="0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Thickness (mm)"/>
+                            <TextBlock Style="{StaticResource FieldLabel}"
+                                       Text="{Binding ThicknessLabel}"/>
                             <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding ThicknessTooltip}"/>
@@ -261,13 +257,12 @@
                         <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
                                  Margin="0,2,0,0">
                             <TextBox.Text>
-                                <Binding Path="ThicknessMmText"
+                                <Binding Path="ThicknessText"
                                          UpdateSourceTrigger="PropertyChanged"
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -275,7 +270,8 @@
                     <!-- Cooling rate -->
                     <StackPanel Grid.Column="2">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Cooling Rate (°C/s)"/>
+                            <TextBlock Style="{StaticResource FieldLabel}"
+                                       Text="{Binding CoolingRateLabel}"/>
                             <Border Style="{StaticResource InfoIconContainer}">
                                 <Border.ToolTip>
                                     <ToolTip Content="{Binding CoolingRateTooltip}"/>
@@ -290,13 +286,12 @@
                         <TextBox Style="{StaticResource ValidatedTextBoxSafeTooltip}"
                                  Margin="0,2,0,0">
                             <TextBox.Text>
-                                <Binding Path="CoolingRateCPerSecText"
+                                <Binding Path="CoolingRateText"
                                          UpdateSourceTrigger="PropertyChanged"
                                          ValidatesOnDataErrors="True"
                                          NotifyOnValidationError="True"
                                          Delay="250"
-                                         FallbackValue="0"
-                                         TargetNullValue="0"/>
+                                         FallbackValue="0"/>
                             </TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -387,8 +382,10 @@
                                            FontSize="16"
                                            FontWeight="SemiBold"/>
                                 <TextBlock Text="  (" Opacity="0.8"/>
-                                <TextBlock Text="{Binding CoolingRateCPerSecText}" Opacity="0.8"/>
-                                <TextBlock Text=" °C/s)" Opacity="0.8"/>
+                                <TextBlock Text="{Binding CoolingRateText}" Opacity="0.8"/>
+                                <TextBlock Text=" " Opacity="0.8"/>
+                                <TextBlock Text="{Binding CoolingRateUnitSuffix}" Opacity="0.8"/>
+                                <TextBlock Text=")" Opacity="0.8"/>
                             </StackPanel>
                         </StackPanel>
 

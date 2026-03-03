@@ -11,6 +11,7 @@ using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Validation;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
+using Castara.Wpf.Infrastructure.Components;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ namespace Castara.Wpf.ViewModels;
 
 /// <summary>
 /// The view model for the calculations view, managing cast iron composition inputs,
-/// estimation calculations, result visualizations, and real-time validation.
+/// estimation calculations, result visualizations, and real-time validation with unit system support.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -31,6 +32,7 @@ namespace Castara.Wpf.ViewModels;
 /// <list type="bullet">
 ///   <item><description>Real-time validation using <see cref="IDataErrorInfo"/> with field-level error messages</description></item>
 ///   <item><description>Text-based input with parsing and numeric storage separation</description></item>
+///   <item><description>Bidirectional unit conversion between Standard (SI) and American Standard units</description></item>
 ///   <item><description>Calculation execution with comprehensive error handling and logging</description></item>
 ///   <item><description>Result display with formatted text properties for UI binding</description></item>
 ///   <item><description>Chart visualization (composition bars, graphitization/hardness gauges)</description></item>
@@ -39,35 +41,224 @@ namespace Castara.Wpf.ViewModels;
 /// </list>
 /// </para>
 /// <para>
-/// <strong>Validation Architecture:</strong> The view model uses a two-layer approach:
+/// <strong>Unit System Architecture:</strong> The view model maintains a strict separation:
+/// <list type="bullet">
+///   <item><description>Canonical values are always stored in SI units (mm, °C/s)</description></item>
+///   <item><description>Display text reflects the current <see cref="UnitSystem"/> (mm/in, °C/s/°F/s)</description></item>
+///   <item><description>User input is validated in display units, then converted to SI for storage</description></item>
+///   <item><description>Calculations always use canonical SI values regardless of display units</description></item>
+///   <item><description>Changing unit systems rebuilds validators and re-seeds display text from canonical values</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// <strong>Validation Architecture:</strong> Three-layer validation approach:
 /// <list type="number">
 ///   <item><description>Text properties (e.g., <see cref="CarbonText"/>) store raw user input</description></item>
-///   <item><description>Numeric properties (e.g., <see cref="Carbon"/>) store validated values</description></item>
-///   <item><description><see cref="NumericTextField"/> helper performs parsing and range validation</description></item>
+///   <item><description>Numeric properties (e.g., <see cref="Carbon"/>) store validated SI values</description></item>
+///   <item><description><see cref="NumericTextField"/> helper performs parsing, range validation in display units</description></item>
 ///   <item><description><see cref="IDataErrorInfo"/> exposes errors to WPF validation system</description></item>
 /// </list>
-/// This approach allows real-time feedback while maintaining clean domain model inputs.
 /// </para>
 /// <para>
 /// <strong>Chart Management:</strong> OxyPlot charts are rebuilt on theme changes and updated
-/// reactively as inputs change. Gauge values are cached to survive theme switches without
-/// recalculation.
+/// reactively as inputs change. Gauge values are cached to survive theme switches without recalculation.
 /// </para>
 /// </remarks>
-public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware, IDataErrorInfo
+public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware, IUnitAware, IDataErrorInfo
 {
+    // ============================================================
+    // Constants - Green Sand Gray Iron Defaults
+    // ============================================================
+
+    /// <summary>Minimum section thickness in millimeters for green sand gray iron castings.</summary>
+    private const double ThicknessMinMm = 3.0;
+
+    /// <summary>Maximum section thickness in millimeters for green sand gray iron castings.</summary>
+    private const double ThicknessMaxMm = 150.0;
+
+    /// <summary>Minimum cooling rate in °C/s for green sand gray iron castings.</summary>
+    private const double CoolingMinCPerSec = 0.01;
+
+    /// <summary>Maximum cooling rate in °C/s for green sand gray iron castings.</summary>
+    private const double CoolingMaxCPerSec = 2.0;
+
+    /// <summary>Conversion factor: millimeters per inch.</summary>
+    private const double MmPerIn = 25.4;
+
+    /// <summary>Conversion factor: °F/s per °C/s (9/5).</summary>
+    private const double FPerC = 9.0 / 5.0;
+
+    /// <summary>Minimum hardness value for gauge display normalization (HB).</summary>
+    private const double HbMinWindow = 140.0;
+
+    /// <summary>Maximum hardness value for gauge display normalization (HB).</summary>
+    private const double HbMaxWindow = 320.0;
+
+    /// <summary>Display format for thickness in millimeters.</summary>
+    private const string ThicknessFormat_Mm = "0.#";
+
+    /// <summary>Display format for thickness in inches.</summary>
+    private const string ThicknessFormat_In = "0.###";
+
+    /// <summary>Display format for cooling rate in °C/s.</summary>
+    private const string CoolingFormat_CPerSec = "0.####";
+
+    /// <summary>Display format for cooling rate in °F/s.</summary>
+    private const string CoolingFormat_FPerSec = "0.####";
+
+    // ============================================================
+    // Fields - Services
+    // ============================================================
+
     private readonly IStatusService _status;
     private readonly ICastIronEstimator _estimator;
     private readonly ILogger<CalculationsViewModel> _log;
+
+    // ============================================================
+    // Fields - Validation
+    // ============================================================
+
+    private readonly NumericTextField _carbonField;
+    private readonly NumericTextField _siliconField;
+    private readonly NumericTextField _manganeseField;
+    private readonly NumericTextField _phosphorusField;
+    private readonly NumericTextField _sulfurField;
+
+    /// <summary>
+    /// Thickness field - rebuilt when unit system changes to validate in display units.
+    /// </summary>
+    private NumericTextField _thicknessField;
+
+    /// <summary>
+    /// Cooling rate field - rebuilt when unit system changes to validate in display units.
+    /// </summary>
+    private NumericTextField _coolingField;
+
+    /// <summary>
+    /// Maps WPF property names to field accessors for <see cref="IDataErrorInfo"/> support.
+    /// Uses functions to allow dynamic field replacement when unit system changes.
+    /// </summary>
+    private readonly Dictionary<string, Func<NumericTextField>> _fieldAccessorByProperty;
+
+    // ============================================================
+    // Fields - State
+    // ============================================================
+
+    private bool _isDarkTheme = true;
+    private UnitSystem _unitSystem = UnitSystem.Standard;
+    private CastIronEstimate? _result;
+
+    private PlotModel? _compositionPlotModel;
+    private PlotModel? _graphGaugeModel;
+    private PlotModel? _hardnessGaugeModel;
+
+    private BarSeries? _compositionSeries;
+    private PieSeries? _graphGaugeSeries;
+    private PieSeries? _hardnessGaugeSeries;
+
+    /// <summary>Cached flag: whether last gauge update had a valid result.</summary>
+    private bool _lastHasResult;
+
+    /// <summary>Cached graphitization score for theme-change repainting.</summary>
+    private double _lastGraphScore01;
+
+    /// <summary>Cached minimum hardness value for theme-change repainting.</summary>
+    private int _lastHbMin;
+
+    /// <summary>Cached maximum hardness value for theme-change repainting.</summary>
+    private int _lastHbMax;
+
+    // ============================================================
+    // Events
+    // ============================================================
 
     /// <summary>
     /// Occurs when a property value changes, supporting WPF data binding.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    // ---------------------------------------
-    // Numeric Canonical Values (domain uses these)
-    // ---------------------------------------
+    // ============================================================
+    // Constructor
+    // ============================================================
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CalculationsViewModel"/> class.
+    /// </summary>
+    /// <param name="status">The status service for displaying operation results.</param>
+    /// <param name="estimator">The cast iron estimator service for performing calculations.</param>
+    /// <param name="log">The logger for diagnostic telemetry (optional, defaults to null logger).</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="status"/> or <paramref name="estimator"/> is null.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The constructor performs comprehensive initialization:
+    /// <list type="number">
+    ///   <item><description>Creates validation fields for all inputs with range constraints</description></item>
+    ///   <item><description>Builds unit-sensitive validators for thickness and cooling rate</description></item>
+    ///   <item><description>Sets default values (typical Class 30 gray iron composition)</description></item>
+    ///   <item><description>Seeds text fields from numeric defaults in current unit system</description></item>
+    ///   <item><description>Builds OxyPlot chart models for current theme</description></item>
+    ///   <item><description>Updates composition chart with default values</description></item>
+    ///   <item><description>Initializes gauge charts to zero state</description></item>
+    ///   <item><description>Sets initial status to "Ready"</description></item>
+    ///   <item><description>Logs initialization at Information level</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Default Composition:</strong> Typical Class 30 gray iron with C: 3.40%, Si: 2.10%,
+    /// Mn: 0.55%, P: 0.05%, S: 0.02%, Section: 12mm thickness, 1°C/s cooling rate.
+    /// </para>
+    /// </remarks>
+    public CalculationsViewModel(
+        IStatusService status,
+        ICastIronEstimator estimator,
+        ILogger<CalculationsViewModel>? log = null)
+    {
+        _status = status ?? throw new ArgumentNullException(nameof(status));
+        _estimator = estimator ?? throw new ArgumentNullException(nameof(estimator));
+        _log = log ?? NullLogger<CalculationsViewModel>.Instance;
+
+        CalculateCommand = new RelayCommand(Calculate, CanCalculate);
+        ClearCommand = new RelayCommand(Clear);
+
+        // Composition fields: use domain constraints (wt% always same units)
+        _carbonField = NumericTextField.Range("Carbon", CastIronInputConstraints.CarbonMin, CastIronInputConstraints.CarbonMax);
+        _siliconField = NumericTextField.Range("Silicon", CastIronInputConstraints.SiliconMin, CastIronInputConstraints.SiliconMax);
+        _manganeseField = NumericTextField.Range("Manganese", CastIronInputConstraints.ManganeseMin, CastIronInputConstraints.ManganeseMax);
+        _phosphorusField = NumericTextField.Range("Phosphorus", CastIronInputConstraints.PhosphorusMin, CastIronInputConstraints.PhosphorusMax);
+        _sulfurField = NumericTextField.Range("Sulfur", CastIronInputConstraints.SulfurMin, CastIronInputConstraints.SulfurMax);
+
+        // Unit-sensitive: build for initial UnitSystem
+        _thicknessField = BuildThicknessField(_unitSystem);
+        _coolingField = BuildCoolingField(_unitSystem);
+
+        // Field mapping for IDataErrorInfo
+        _fieldAccessorByProperty = new()
+        {
+            { nameof(CarbonText), () => _carbonField },
+            { nameof(SiliconText), () => _siliconField },
+            { nameof(ManganeseText), () => _manganeseField },
+            { nameof(PhosphorusText), () => _phosphorusField },
+            { nameof(SulfurText), () => _sulfurField },
+            { nameof(ThicknessText), () => _thicknessField },
+            { nameof(CoolingRateText), () => _coolingField },
+        };
+
+        ApplyDefaultNumerics();
+        SeedAllTextFromNumerics(); // Seeds DISPLAY values from canonical SI
+
+        RebuildPlotsForTheme();
+        UpdateCompositionPlot();
+        UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
+
+        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
+        _log.LogInformation("CalculationsViewModel initialized");
+    }
+
+    // ============================================================
+    // Properties - Canonical Numeric Values (Always SI Units)
+    // ============================================================
 
     /// <summary>
     /// Gets the validated carbon content in weight percent (wt%).
@@ -115,26 +306,26 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     public double Sulfur { get; private set; }
 
     /// <summary>
-    /// Gets the validated section thickness in millimeters.
+    /// Gets the validated section thickness in millimeters (canonical SI value).
     /// </summary>
     /// <value>
-    /// The section thickness. This value is only updated when <see cref="ThicknessMmText"/> parses
-    /// successfully and passes validation.
+    /// The thickness in mm. This value is only updated when <see cref="ThicknessText"/> parses
+    /// successfully and passes validation in display units, then converts to mm.
     /// </value>
-    public double ThicknessMm { get; private set; }
+    public double ThicknessValue { get; private set; }
 
     /// <summary>
-    /// Gets the validated cooling rate in degrees Celsius per second.
+    /// Gets the validated cooling rate in degrees Celsius per second (canonical SI value).
     /// </summary>
     /// <value>
-    /// The cooling rate. This value is only updated when <see cref="CoolingRateCPerSecText"/> parses
-    /// successfully and passes validation.
+    /// The cooling rate in °C/s. This value is only updated when <see cref="CoolingRateText"/> parses
+    /// successfully and passes validation in display units, then converts to °C/s.
     /// </value>
-    public double CoolingRateCPerSec { get; private set; }
+    public double CoolingRateValue { get; private set; }
 
-    // ---------------------------------------
-    // Tooltips (XAML binds to these)
-    // ---------------------------------------
+    // ============================================================
+    // Properties - Tooltips and Labels (Unit-Aware)
+    // ============================================================
 
     /// <summary>
     /// Gets the tooltip text for the carbon input field with validation range.
@@ -167,149 +358,56 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         $"Sulfur (S), wt%.\nValid range: {CastIronInputConstraints.SulfurMin:0.##} – {CastIronInputConstraints.SulfurMax:0.##}.";
 
     /// <summary>
-    /// Gets the tooltip text for the thickness input field with validation requirements.
+    /// Gets the tooltip text for the thickness input field with unit-appropriate validation range.
     /// </summary>
-    public string ThicknessTooltip =>
-        "Section thickness in millimeters.\nValid range: > 0 mm.";
+    /// <value>
+    /// Displays range in inches when American Standard units are active, otherwise in millimeters.
+    /// Includes note about green sand gray iron defaults.
+    /// </value>
+    public string ThicknessTooltip
+        => UnitSystem == UnitSystem.AmericanStandard
+            ? $"Section thickness in inches (in).\nValid range: {ThicknessMinMm / MmPerIn:0.###} – {ThicknessMaxMm / MmPerIn:0.###} in.\n(Green sand gray iron defaults.)"
+            : $"Section thickness in millimeters (mm).\nValid range: {ThicknessMinMm:0.##} – {ThicknessMaxMm:0.##} mm.\n(Green sand gray iron defaults.)";
 
     /// <summary>
-    /// Gets the tooltip text for the cooling rate input field with validation range and typical guidance.
+    /// Gets the tooltip text for the cooling rate input field with unit-appropriate validation range.
     /// </summary>
-    public string CoolingRateTooltip =>
-        $"Cooling rate in °C/s (continuous).\nValid range: > 0 °C/s.\nTypical casting guidance: {CastIronInputConstraints.CoolingRateMin:0.##} – {CastIronInputConstraints.CoolingRateMax:0.##} °C/s.";
-
-    // ---------------------------------------
-    // Field Helpers (raw text + validation)
-    // ---------------------------------------
-
-    private readonly NumericTextField _carbonField;
-    private readonly NumericTextField _siliconField;
-    private readonly NumericTextField _manganeseField;
-    private readonly NumericTextField _phosphorusField;
-    private readonly NumericTextField _sulfurField;
-    private readonly NumericTextField _thicknessField;
-    private readonly NumericTextField _coolingField;
+    /// <value>
+    /// Displays range in °F/s when American Standard units are active, otherwise in °C/s.
+    /// Includes note about green sand gray iron defaults.
+    /// </value>
+    public string CoolingRateTooltip
+        => UnitSystem == UnitSystem.AmericanStandard
+            ? $"Cooling rate in °F/s.\nValid range: {CoolingMinCPerSec * FPerC:0.###} – {CoolingMaxCPerSec * FPerC:0.###} °F/s.\n(Green sand gray iron defaults.)"
+            : $"Cooling rate in °C/s.\nValid range: {CoolingMinCPerSec:0.###} – {CoolingMaxCPerSec:0.###} °C/s.\n(Green sand gray iron defaults.)";
 
     /// <summary>
-    /// Maps property names to their corresponding validation fields for <see cref="IDataErrorInfo"/> support.
+    /// Gets the label text for the thickness input field with appropriate units.
     /// </summary>
-    private readonly Dictionary<string, NumericTextField> _fieldByProperty;
+    /// <value>
+    /// Returns "Thickness (in)" for American Standard, "Thickness (mm)" for Standard units.
+    /// </value>
+    public string ThicknessLabel => UnitSystem == UnitSystem.AmericanStandard ? "Thickness (in)" : "Thickness (mm)";
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CalculationsViewModel"/> class.
+    /// Gets the label text for the cooling rate input field with appropriate units.
     /// </summary>
-    /// <param name="status">The status service for displaying operation results.</param>
-    /// <param name="estimator">The cast iron estimator service for performing calculations.</param>
-    /// <param name="log">The logger for diagnostic telemetry.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="status"/> or <paramref name="estimator"/> is null.
-    /// </exception>
-    /// <remarks>
-    /// <para>
-    /// The constructor performs comprehensive initialization:
-    /// <list type="number">
-    ///   <item><description>Creates validation fields for all inputs with range constraints</description></item>
-    ///   <item><description>Sets default values (typical Class 30 gray iron composition)</description></item>
-    ///   <item><description>Seeds text fields from numeric defaults to show valid initial state</description></item>
-    ///   <item><description>Builds OxyPlot chart models for current theme</description></item>
-    ///   <item><description>Updates composition chart with default values</description></item>
-    ///   <item><description>Initializes gauge charts to zero state</description></item>
-    ///   <item><description>Sets initial status to "Ready"</description></item>
-    ///   <item><description>Logs initialization with debug-level details</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// If <paramref name="log"/> is null, a <see cref="NullLogger{T}"/> is used to prevent exceptions
-    /// while allowing the view model to function without logging.
-    /// </para>
-    /// </remarks>
-    public CalculationsViewModel(
-        IStatusService status,
-        ICastIronEstimator estimator,
-        ILogger<CalculationsViewModel> log)
-    {
-        _status = status ?? throw new ArgumentNullException(nameof(status));
-        _estimator = estimator ?? throw new ArgumentNullException(nameof(estimator));
-        _log = log ?? NullLogger<CalculationsViewModel>.Instance;
+    /// <value>
+    /// Returns "Cooling Rate (°F/s)" for American Standard, "Cooling Rate (°C/s)" for Standard units.
+    /// </value>
+    public string CoolingRateLabel => UnitSystem == UnitSystem.AmericanStandard ? "Cooling Rate (°F/s)" : "Cooling Rate (°C/s)";
 
-        CalculateCommand = new RelayCommand(Calculate, CanCalculate);
-        ClearCommand = new RelayCommand(Clear);
+    /// <summary>
+    /// Gets the unit suffix text for cooling rate display.
+    /// </summary>
+    /// <value>
+    /// Returns "°F/s" for American Standard, "°C/s" for Standard units.
+    /// </value>
+    public string CoolingRateUnitSuffix => UnitSystem == UnitSystem.AmericanStandard ? "°F/s" : "°C/s";
 
-        // Define validation fields with range constraints from domain
-        _carbonField = NumericTextField.Range(
-            "Carbon",
-            CastIronInputConstraints.CarbonMin,
-            CastIronInputConstraints.CarbonMax);
-
-        _siliconField = NumericTextField.Range(
-            "Silicon",
-            CastIronInputConstraints.SiliconMin,
-            CastIronInputConstraints.SiliconMax);
-
-        _manganeseField = NumericTextField.Range(
-            "Manganese",
-            CastIronInputConstraints.ManganeseMin,
-            CastIronInputConstraints.ManganeseMax);
-
-        _phosphorusField = NumericTextField.Range(
-            "Phosphorus",
-            CastIronInputConstraints.PhosphorusMin,
-            CastIronInputConstraints.PhosphorusMax);
-
-        _sulfurField = NumericTextField.Range(
-            "Sulfur",
-            CastIronInputConstraints.SulfurMin,
-            CastIronInputConstraints.SulfurMax);
-
-        _thicknessField = NumericTextField.MinPositive(
-            "Thickness",
-            CastIronInputConstraints.ThicknessMinMm);
-
-        _coolingField = NumericTextField.Range(
-            "Cooling rate",
-            CastIronInputConstraints.CoolingRateMinCPerSec,
-            CastIronInputConstraints.CoolingRateMax);
-
-        _fieldByProperty = new()
-        {
-            { nameof(CarbonText), _carbonField },
-            { nameof(SiliconText), _siliconField },
-            { nameof(ManganeseText), _manganeseField },
-            { nameof(PhosphorusText), _phosphorusField },
-            { nameof(SulfurText), _sulfurField },
-            { nameof(ThicknessMmText), _thicknessField },
-            { nameof(CoolingRateCPerSecText), _coolingField },
-        };
-
-        // Set default composition values (typical Class 30 gray iron)
-        Carbon = 3.40;
-        Silicon = 2.10;
-        Manganese = 0.55;
-        Phosphorus = 0.05;
-        Sulfur = 0.02;
-
-        ThicknessMm = 12.0;
-        CoolingRateCPerSec = 1.0;
-
-        _log.LogInformation("CalculationsViewModel initialized");
-        _log.LogDebug(
-            "Default inputs: C={Carbon} Si={Silicon} Mn={Manganese} P={Phosphorus} S={Sulfur} Thickness={Thickness} Cooling={Cooling}",
-            Carbon, Silicon, Manganese, Phosphorus, Sulfur, ThicknessMm, CoolingRateCPerSec);
-
-        // Seed text fields from numeric defaults to show valid initial state
-        SeedAllTextFromNumerics();
-
-        // Build and populate charts
-        RebuildPlotsForTheme();
-        UpdateCompositionPlot();
-        UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
-
-        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
-    }
-
-    // ---------------------------------------
-    // Validation State
-    // ---------------------------------------
+    // ============================================================
+    // Properties - Validation
+    // ============================================================
 
     /// <summary>
     /// Gets a value indicating whether all input fields contain valid values.
@@ -322,241 +420,6 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// all seven input fields (5 composition + 2 section parameters) for validity.
     /// </remarks>
     public bool IsValid => CanCalculate();
-
-    // ---------------------------------------
-    // Text Wrappers (bind TextBox.Text to these)
-    // ---------------------------------------
-
-    /// <summary>
-    /// Gets or sets the carbon input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="Carbon"/> is updated and the composition chart is refreshed.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string CarbonText
-    {
-        get => _carbonField.Text;
-        set => SetFieldText(_carbonField, value, v => Carbon = v, nameof(CarbonText));
-    }
-
-    /// <summary>
-    /// Gets or sets the silicon input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="Silicon"/> is updated and the composition chart is refreshed.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string SiliconText
-    {
-        get => _siliconField.Text;
-        set => SetFieldText(_siliconField, value, v => Silicon = v, nameof(SiliconText));
-    }
-
-    /// <summary>
-    /// Gets or sets the manganese input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="Manganese"/> is updated and the composition chart is refreshed.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string ManganeseText
-    {
-        get => _manganeseField.Text;
-        set => SetFieldText(_manganeseField, value, v => Manganese = v, nameof(ManganeseText));
-    }
-
-    /// <summary>
-    /// Gets or sets the phosphorus input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="Phosphorus"/> is updated and the composition chart is refreshed.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string PhosphorusText
-    {
-        get => _phosphorusField.Text;
-        set => SetFieldText(_phosphorusField, value, v => Phosphorus = v, nameof(PhosphorusText));
-    }
-
-    /// <summary>
-    /// Gets or sets the sulfur input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="Sulfur"/> is updated and the composition chart is refreshed.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string SulfurText
-    {
-        get => _sulfurField.Text;
-        set => SetFieldText(_sulfurField, value, v => Sulfur = v, nameof(SulfurText));
-    }
-
-    /// <summary>
-    /// Gets or sets the thickness input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="ThicknessMm"/> is updated.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string ThicknessMmText
-    {
-        get => _thicknessField.Text;
-        set => SetFieldText(_thicknessField, value, v => ThicknessMm = v, nameof(ThicknessMmText));
-    }
-
-    /// <summary>
-    /// Gets or sets the cooling rate input text for UI binding.
-    /// </summary>
-    /// <value>
-    /// The raw text entered by the user. May contain invalid or unparseable values.
-    /// </value>
-    /// <remarks>
-    /// When set, this property attempts to parse and validate the text. If successful,
-    /// <see cref="CoolingRateCPerSec"/> is updated.
-    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
-    /// </remarks>
-    public string CoolingRateCPerSecText
-    {
-        get => _coolingField.Text;
-        set => SetFieldText(_coolingField, value, v => CoolingRateCPerSec = v, nameof(CoolingRateCPerSecText));
-    }
-
-    /// <summary>
-    /// Sets a field's text value, attempts parsing/validation, and updates the canonical numeric value if valid.
-    /// </summary>
-    /// <param name="field">The validation field to update.</param>
-    /// <param name="value">The new text value from the UI.</param>
-    /// <param name="assignIfValid">Action to update the canonical numeric property if validation succeeds.</param>
-    /// <param name="propertyName">The property name for change notification.</param>
-    /// <remarks>
-    /// <para>
-    /// This method coordinates the validation workflow:
-    /// <list type="number">
-    ///   <item><description>Updates the field's text (logged at Debug level)</description></item>
-    ///   <item><description>Attempts to parse and validate the text</description></item>
-    ///   <item><description>If valid: updates numeric property, refreshes charts, logs at Trace level</description></item>
-    ///   <item><description>If invalid: logs validation error at Trace level only (to avoid spam)</description></item>
-    ///   <item><description>Raises property change notifications for text property and IsValid</description></item>
-    ///   <item><description>Updates Calculate command's CanExecute state</description></item>
-    /// </list>
-    /// </para>
-    /// </remarks>
-    private void SetFieldText(
-        NumericTextField field,
-        string? value,
-        Action<double> assignIfValid,
-        string propertyName)
-    {
-        _log.LogDebug("Field {PropertyName} changed to '{Value}'", propertyName, value);
-
-        field.Text = value ?? string.Empty;
-
-        // Only update the canonical numeric value when the text parses and validates
-        if (field.TryGetValidValue(out var v))
-        {
-            _log.LogTrace("Field {PropertyName} parsed successfully = {NumericValue}", propertyName, v);
-
-            assignIfValid(v);
-
-            // Notify dependent numeric properties
-            if (ReferenceEquals(field, _thicknessField))
-                OnPropertyChanged(nameof(ThicknessMm));
-
-            if (ReferenceEquals(field, _coolingField))
-                OnPropertyChanged(nameof(CoolingRateCPerSec));
-
-            // Update composition chart for composition inputs
-            if (ReferenceEquals(field, _carbonField) ||
-                ReferenceEquals(field, _siliconField) ||
-                ReferenceEquals(field, _manganeseField) ||
-                ReferenceEquals(field, _phosphorusField) ||
-                ReferenceEquals(field, _sulfurField))
-            {
-                UpdateCompositionPlot();
-            }
-        }
-        else
-        {
-            // Only log invalid at Trace to avoid spam while typing
-            if (!field.IsValid)
-                _log.LogTrace("Field {PropertyName} invalid: {Error}", propertyName, field.Error);
-        }
-
-        // Notify WPF that validation might have changed
-        OnPropertyChanged(propertyName);
-        OnPropertyChanged(nameof(IsValid));
-
-        // Update command enabled state
-        InvalidateCanExecute();
-    }
-
-    /// <summary>
-    /// Initializes all text fields from their corresponding numeric default values.
-    /// </summary>
-    /// <remarks>
-    /// This method is called during construction to ensure the UI displays valid
-    /// initial values without validation errors. It also triggers chart updates
-    /// and command state refresh.
-    /// </remarks>
-    private void SeedAllTextFromNumerics()
-    {
-        _carbonField.Seed(Carbon);
-        _siliconField.Seed(Silicon);
-        _manganeseField.Seed(Manganese);
-        _phosphorusField.Seed(Phosphorus);
-        _sulfurField.Seed(Sulfur);
-        _thicknessField.Seed(ThicknessMm);
-        _coolingField.Seed(CoolingRateCPerSec);
-
-        // Notify all text properties
-        OnPropertyChanged(nameof(CarbonText));
-        OnPropertyChanged(nameof(SiliconText));
-        OnPropertyChanged(nameof(ManganeseText));
-        OnPropertyChanged(nameof(PhosphorusText));
-        OnPropertyChanged(nameof(SulfurText));
-        OnPropertyChanged(nameof(ThicknessMmText));
-        OnPropertyChanged(nameof(CoolingRateCPerSecText));
-
-        // Notify numeric properties
-        OnPropertyChanged(nameof(ThicknessMm));
-        OnPropertyChanged(nameof(CoolingRateCPerSec));
-
-        OnPropertyChanged(nameof(IsValid));
-
-        InvalidateCanExecute();
-        UpdateCompositionPlot();
-
-        _log.LogDebug("Seeded text fields from numeric defaults");
-    }
-
-    // ---------------------------------------
-    // IDataErrorInfo Implementation
-    // ---------------------------------------
 
     /// <summary>
     /// Gets an error message indicating what is wrong with this object.
@@ -576,18 +439,160 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// </returns>
     /// <remarks>
     /// This indexer enables WPF's validation system to display field-specific error messages
-    /// in tooltips, borders, or other validation UI elements.
+    /// in tooltips, borders, or other validation UI elements. Uses dynamic field accessors
+    /// to support field replacement when unit system changes.
     /// </remarks>
     string IDataErrorInfo.this[string columnName]
-        => _fieldByProperty.TryGetValue(columnName, out var field)
-            ? field.Error
+        => _fieldAccessorByProperty.TryGetValue(columnName, out var getter)
+            ? getter().Error
             : string.Empty;
 
-    // ---------------------------------------
-    // Result and Derived Outputs
-    // ---------------------------------------
+    // ============================================================
+    // Properties - Text Input Wrappers (Display Units)
+    // ============================================================
 
-    private CastIronEstimate? _result;
+    /// <summary>
+    /// Gets or sets the carbon input text for UI binding.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user. May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// When set, this property attempts to parse and validate the text. If successful,
+    /// <see cref="Carbon"/> is updated and the composition chart is refreshed.
+    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
+    /// </remarks>
+    public string CarbonText
+    {
+        get => _carbonField.Text;
+        set => SetFieldText(_carbonField, value, v => Carbon = v, nameof(CarbonText), refreshComposition: true);
+    }
+
+    /// <summary>
+    /// Gets or sets the silicon input text for UI binding.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user. May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// When set, this property attempts to parse and validate the text. If successful,
+    /// <see cref="Silicon"/> is updated and the composition chart is refreshed.
+    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
+    /// </remarks>
+    public string SiliconText
+    {
+        get => _siliconField.Text;
+        set => SetFieldText(_siliconField, value, v => Silicon = v, nameof(SiliconText), refreshComposition: true);
+    }
+
+    /// <summary>
+    /// Gets or sets the manganese input text for UI binding.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user. May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// When set, this property attempts to parse and validate the text. If successful,
+    /// <see cref="Manganese"/> is updated and the composition chart is refreshed.
+    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
+    /// </remarks>
+    public string ManganeseText
+    {
+        get => _manganeseField.Text;
+        set => SetFieldText(_manganeseField, value, v => Manganese = v, nameof(ManganeseText), refreshComposition: true);
+    }
+
+    /// <summary>
+    /// Gets or sets the phosphorus input text for UI binding.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user. May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// When set, this property attempts to parse and validate the text. If successful,
+    /// <see cref="Phosphorus"/> is updated and the composition chart is refreshed.
+    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
+    /// </remarks>
+    public string PhosphorusText
+    {
+        get => _phosphorusField.Text;
+        set => SetFieldText(_phosphorusField, value, v => Phosphorus = v, nameof(PhosphorusText), refreshComposition: true);
+    }
+
+    /// <summary>
+    /// Gets or sets the sulfur input text for UI binding.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user. May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// When set, this property attempts to parse and validate the text. If successful,
+    /// <see cref="Sulfur"/> is updated and the composition chart is refreshed.
+    /// Validation errors are exposed through <see cref="IDataErrorInfo"/>.
+    /// </remarks>
+    public string SulfurText
+    {
+        get => _sulfurField.Text;
+        set => SetFieldText(_sulfurField, value, v => Sulfur = v, nameof(SulfurText), refreshComposition: true);
+    }
+
+    /// <summary>
+    /// Gets or sets the thickness input text for UI binding in current display units.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user in display units (inches or millimeters). May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// This property demonstrates the bidirectional unit conversion pattern:
+    /// <list type="bullet">
+    ///   <item><description>Text is validated in display units (in or mm depending on <see cref="UnitSystem"/>)</description></item>
+    ///   <item><description>Valid values are converted to canonical SI (mm) and stored in <see cref="ThicknessValue"/></description></item>
+    ///   <item><description>Validation ranges adjust to display units automatically</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public string ThicknessText
+    {
+        get => _thicknessField.Text;
+        set => SetFieldText(
+            _thicknessField,
+            value,
+            vDisplay => ThicknessValue = ToMmFromDisplay(vDisplay, UnitSystem),
+            nameof(ThicknessText),
+            afterValid: () => OnPropertyChanged(nameof(ThicknessValue)));
+    }
+
+    /// <summary>
+    /// Gets or sets the cooling rate input text for UI binding in current display units.
+    /// </summary>
+    /// <value>
+    /// The raw text entered by the user in display units (°F/s or °C/s). May contain invalid or unparseable values.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// This property demonstrates the bidirectional unit conversion pattern:
+    /// <list type="bullet">
+    ///   <item><description>Text is validated in display units (°F/s or °C/s depending on <see cref="UnitSystem"/>)</description></item>
+    ///   <item><description>Valid values are converted to canonical SI (°C/s) and stored in <see cref="CoolingRateValue"/></description></item>
+    ///   <item><description>Validation ranges adjust to display units automatically</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public string CoolingRateText
+    {
+        get => _coolingField.Text;
+        set => SetFieldText(
+            _coolingField,
+            value,
+            vDisplay => CoolingRateValue = ToCPerSecFromDisplay(vDisplay, UnitSystem),
+            nameof(CoolingRateText),
+            afterValid: () => OnPropertyChanged(nameof(CoolingRateValue)));
+    }
+
+    // ============================================================
+    // Properties - Results
+    // ============================================================
 
     /// <summary>
     /// Gets the current estimation result, or null if no calculation has been performed.
@@ -605,7 +610,9 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         get => _result;
         private set
         {
+            if (ReferenceEquals(_result, value)) return;
             _result = value;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(CarbonEquivalentText));
             OnPropertyChanged(nameof(GraphitizationScoreText));
@@ -622,8 +629,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// The carbon equivalent value formatted to three decimal places, or "—" if no result is available.
     /// </value>
-    public string CarbonEquivalentText =>
-        Result is null ? "—" : Result.CarbonEquivalent.ToString("0.000", CultureInfo.InvariantCulture);
+    public string CarbonEquivalentText
+        => Result is null ? "—" : Result.CarbonEquivalent.ToString("0.000", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Gets the formatted graphitization score text for display.
@@ -631,8 +638,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// The graphitization score (0-1 scale) formatted to three decimal places, or "—" if no result is available.
     /// </value>
-    public string GraphitizationScoreText =>
-        Result is null ? "—" : Result.GraphitizationScore.ToString("0.000", CultureInfo.InvariantCulture);
+    public string GraphitizationScoreText
+        => Result is null ? "—" : Result.GraphitizationScore.ToString("0.000", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Gets the formatted hardness range text for display.
@@ -640,8 +647,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// The hardness range in Brinell (e.g., "205-235 HB"), or "—" if no result is available.
     /// </value>
-    public string HardnessText =>
-        Result is null ? "—" : Result.EstimatedHardness.ToString();
+    public string HardnessText
+        => Result is null ? "—" : Result.EstimatedHardness.ToString();
 
     /// <summary>
     /// Gets the formatted cooling factor text for display.
@@ -649,8 +656,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// The cooling factor value formatted to three decimal places, or "—" if no result is available.
     /// </value>
-    public string CoolingFactorText =>
-        Result is null ? "—" : Result.CoolingFactor.ToString("0.000", CultureInfo.InvariantCulture);
+    public string CoolingFactorText
+        => Result is null ? "—" : Result.CoolingFactor.ToString("0.000", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Gets the formatted thickness factor text for display.
@@ -658,8 +665,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// The thickness factor value formatted to three decimal places, or "—" if no result is available.
     /// </value>
-    public string ThicknessFactorText =>
-        Result is null ? "—" : Result.ThicknessFactor.ToString("0.000", CultureInfo.InvariantCulture);
+    public string ThicknessFactorText
+        => Result is null ? "—" : Result.ThicknessFactor.ToString("0.000", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Gets the collection of risk flags identified during estimation.
@@ -667,31 +674,363 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <value>
     /// A read-only list of <see cref="RiskFlag"/> instances, or an empty list if no result is available.
     /// </value>
-    public IReadOnlyList<RiskFlag> Flags =>
-        Result?.Flags ?? Array.Empty<RiskFlag>();
+    public IReadOnlyList<RiskFlag> Flags
+        => Result?.Flags ?? Array.Empty<RiskFlag>();
 
-    // ---------------------------------------
-    // Commands
-    // ---------------------------------------
+    // ============================================================
+    // Properties - Charts
+    // ============================================================
+
+    /// <summary>
+    /// Gets the plot model for the composition bar chart.
+    /// </summary>
+    /// <value>
+    /// The <see cref="PlotModel"/> displaying chemical composition as a bar chart.
+    /// </value>
+    public PlotModel CompositionPlotModel
+    {
+        get => _compositionPlotModel!;
+        private set { _compositionPlotModel = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Gets the plot model for the graphitization gauge (donut chart).
+    /// </summary>
+    /// <value>
+    /// The <see cref="PlotModel"/> displaying graphitization score as a gauge (0-1 scale).
+    /// </value>
+    public PlotModel GraphGaugeModel
+    {
+        get => _graphGaugeModel!;
+        private set { _graphGaugeModel = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Gets the plot model for the hardness gauge (donut chart).
+    /// </summary>
+    /// <value>
+    /// The <see cref="PlotModel"/> displaying hardness as a normalized gauge.
+    /// </value>
+    public PlotModel HardnessGaugeModel
+    {
+        get => _hardnessGaugeModel!;
+        private set { _hardnessGaugeModel = value; OnPropertyChanged(); }
+    }
+
+    // ============================================================
+    // Properties - Theme (IThemeAware)
+    // ============================================================
+
+    /// <summary>
+    /// Gets or sets a value indicating whether dark theme is enabled for chart visualizations.
+    /// </summary>
+    /// <value>
+    /// <c>true</c> if dark theme is enabled; otherwise, <c>false</c> for light theme.
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// When the theme changes:
+    /// <list type="bullet">
+    ///   <item><description>All plot models are rebuilt with appropriate colors</description></item>
+    ///   <item><description>Composition chart is repainted with current values</description></item>
+    ///   <item><description>Gauge charts are repainted with last known results</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public bool IsDarkTheme
+    {
+        get => _isDarkTheme;
+        set
+        {
+            if (_isDarkTheme == value) return;
+            _isDarkTheme = value;
+            OnPropertyChanged();
+
+            RebuildPlotsForTheme();
+            UpdateCompositionPlot();
+            UpdateGaugeModels(_lastHasResult, _lastGraphScore01, _lastHbMin, _lastHbMax);
+        }
+    }
+
+    /// <summary>
+    /// Sets the chart theme for OxyPlot visualizations.
+    /// </summary>
+    /// <param name="isDark">
+    /// <c>true</c> to enable dark theme; <c>false</c> for light theme.
+    /// </param>
+    /// <remarks>
+    /// This method is called by the <see cref="ShellViewModel"/> when the
+    /// application theme changes to ensure consistent theming across the UI.
+    /// </remarks>
+    public void SetTheme(bool isDark) => IsDarkTheme = isDark;
+
+    // ============================================================
+    // Properties - Unit System (IUnitAware)
+    // ============================================================
+
+    /// <summary>
+    /// Gets or sets the unit system used for displaying and interpreting section parameters.
+    /// </summary>
+    /// <value>
+    /// The active <see cref="Models.UnitSystem"/> (Standard or American Standard).
+    /// </value>
+    /// <remarks>
+    /// <para>
+    /// When changed, this property triggers a comprehensive update:
+    /// <list type="number">
+    ///   <item><description>Thickness and cooling rate validators are rebuilt with display-unit ranges</description></item>
+    ///   <item><description>Text fields are re-seeded from canonical SI values converted to new display units</description></item>
+    ///   <item><description>All unit-dependent UI properties (tooltips, labels) are updated</description></item>
+    ///   <item><description>Canonical SI values remain unchanged - only display representation changes</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Critical:</strong> Calculations always use canonical SI values (<see cref="ThicknessValue"/>
+    /// and <see cref="CoolingRateValue"/>) regardless of the active unit system. This property only affects
+    /// validation ranges and text display.
+    /// </para>
+    /// </remarks>
+    public UnitSystem UnitSystem
+    {
+        get => _unitSystem;
+        set
+        {
+            if (_unitSystem == value) return;
+            _unitSystem = value;
+            OnPropertyChanged();
+
+            // Rebuild unit-sensitive validators and reseed text from canonical SI values
+            RebuildUnitSensitiveFieldsAndReseed();
+
+            // Update unit-dependent UI properties
+            OnPropertyChanged(nameof(ThicknessTooltip));
+            OnPropertyChanged(nameof(CoolingRateTooltip));
+            OnPropertyChanged(nameof(CoolingRateUnitSuffix));
+            OnPropertyChanged(nameof(ThicknessLabel));
+            OnPropertyChanged(nameof(CoolingRateLabel));
+        }
+    }
+
+    // ============================================================
+    // Properties - Commands
+    // ============================================================
 
     /// <summary>
     /// Gets the command to execute the cast iron property estimation.
     /// </summary>
+    /// <value>
+    /// A command that validates inputs, executes calculation, updates visualizations, and displays status.
+    /// </value>
     /// <remarks>
-    /// This command validates all inputs, executes the estimation calculation,
-    /// updates visualizations, logs diagnostic information, and displays appropriate status messages.
     /// The command's CanExecute updates automatically as validation state changes.
+    /// Calculations always use canonical SI values regardless of display units.
     /// </remarks>
     public ICommand CalculateCommand { get; }
 
     /// <summary>
     /// Gets the command to clear the current estimation result and reset inputs to defaults.
     /// </summary>
-    /// <remarks>
-    /// This command resets all numeric values to defaults, re-seeds text fields,
-    /// clears gauge visualizations, and returns the status to "Ready" state.
-    /// </remarks>
+    /// <value>
+    /// A command that clears results, resets numeric values to defaults, re-seeds text fields, and returns to "Ready" state.
+    /// </value>
     public ICommand ClearCommand { get; }
+
+    // ============================================================
+    // Private Methods - Calculation Logic
+    // ============================================================
+
+    /// <summary>
+    /// Executes the cast iron property estimation calculation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method performs the following steps:
+    /// <list type="number">
+    ///   <item><description>Logs calculation request at Information level</description></item>
+    ///   <item><description>Validates all inputs (blocks execution if invalid)</description></item>
+    ///   <item><description>Builds domain input models from canonical SI values</description></item>
+    ///   <item><description>Calls the estimation service</description></item>
+    ///   <item><description>Updates gauge visualizations with results</description></item>
+    ///   <item><description>Displays success or warning status</description></item>
+    ///   <item><description>Handles exceptions with Error logging and status display</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Important:</strong> Calculations always use canonical SI values from <see cref="ThicknessValue"/>
+    /// and <see cref="CoolingRateValue"/>, regardless of the current <see cref="UnitSystem"/>.
+    /// </para>
+    /// </remarks>
+    private void Calculate()
+    {
+        _log.LogInformation("Calculation requested");
+
+        try
+        {
+            if (!CanCalculate())
+            {
+                _status.Set(AppStatusLevel.Warning, "Check inputs", "One or more fields are invalid.");
+                return;
+            }
+
+            var inputs = new CastIronInputs(
+                Composition: new CastIronComposition(Carbon, Silicon, Manganese, Phosphorus, Sulfur),
+                Section: new SectionProfile(ThicknessValue, CoolingRateValue));
+
+            Result = _estimator.Estimate(inputs);
+
+            if (Result is not null)
+            {
+                UpdateGaugeModels(
+                    hasResult: true,
+                    graphScore01: Result.GraphitizationScore,
+                    hbMin: Result.EstimatedHardness.MinHB,
+                    hbMax: Result.EstimatedHardness.MaxHB);
+
+                _status.Set(AppStatusLevel.Ok, "Calculated", "OK");
+            }
+            else
+            {
+                UpdateGaugeModels(false, 0, 0, 0);
+                _status.Set(AppStatusLevel.Warning, "No result", "Estimator returned no result.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Calculation failed");
+            Result = null;
+            UpdateGaugeModels(false, 0, 0, 0);
+            _status.Set(AppStatusLevel.Error, "Calculation failed", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Clears the current estimation result and resets all inputs to default values.
+    /// </summary>
+    /// <remarks>
+    /// This method logs the clear operation at Information level, resets all numeric
+    /// properties to their default values (typical Class 30 gray iron), re-seeds the
+    /// text fields in current display units, clears visualizations, and returns the status to "Ready" state.
+    /// </remarks>
+    private void Clear()
+    {
+        _log.LogInformation("Inputs cleared");
+
+        Result = null;
+        UpdateGaugeModels(false, 0, 0, 0);
+
+        ApplyDefaultNumerics();
+        SeedAllTextFromNumerics();
+
+        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
+    }
+
+    /// <summary>
+    /// Applies default numeric values to all canonical properties.
+    /// </summary>
+    /// <remarks>
+    /// Sets typical Class 30 gray iron composition: C: 3.40%, Si: 2.10%, Mn: 0.55%,
+    /// P: 0.05%, S: 0.02%, with section parameters: thickness: 12mm, cooling: 1°C/s.
+    /// All values are in canonical SI units.
+    /// </remarks>
+    private void ApplyDefaultNumerics()
+    {
+        // Typical Class 30 gray iron defaults
+        Carbon = 3.40;
+        Silicon = 2.10;
+        Manganese = 0.55;
+        Phosphorus = 0.05;
+        Sulfur = 0.02;
+
+        ThicknessValue = 12.0;   // mm (canonical)
+        CoolingRateValue = 1.0;  // °C/s (canonical)
+    }
+
+    // ============================================================
+    // Private Methods - Field Management
+    // ============================================================
+
+    /// <summary>
+    /// Sets a field's text value, attempts parsing/validation, and updates the canonical numeric value if valid.
+    /// </summary>
+    /// <param name="field">The validation field to update.</param>
+    /// <param name="value">The new text value from the UI.</param>
+    /// <param name="assignIfValid">Action to update the canonical numeric property if validation succeeds.</param>
+    /// <param name="propertyName">The property name for change notification.</param>
+    /// <param name="refreshComposition">Whether to refresh the composition chart after a valid update.</param>
+    /// <param name="afterValid">Optional action to invoke after successful validation and assignment.</param>
+    /// <remarks>
+    /// <para>
+    /// This method coordinates the validation workflow:
+    /// <list type="number">
+    ///   <item><description>Updates the field's text</description></item>
+    ///   <item><description>Attempts to parse and validate the text</description></item>
+    ///   <item><description>If valid: updates canonical property, invokes callbacks, optionally refreshes charts</description></item>
+    ///   <item><description>Raises property change notifications for text property and IsValid</description></item>
+    ///   <item><description>Updates Calculate command's CanExecute state</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    private void SetFieldText(
+        NumericTextField field,
+        string? value,
+        Action<double> assignIfValid,
+        string propertyName,
+        bool refreshComposition = false,
+        Action? afterValid = null)
+    {
+        field.Text = value ?? string.Empty;
+
+        if (field.TryGetValidValue(out var v))
+        {
+            assignIfValid(v);
+            afterValid?.Invoke();
+
+            if (refreshComposition)
+                UpdateCompositionPlot();
+        }
+
+        OnPropertyChanged(propertyName);
+        OnPropertyChanged(nameof(IsValid));
+        InvalidateCanExecute();
+    }
+
+    /// <summary>
+    /// Initializes all text fields from their corresponding numeric canonical SI values,
+    /// converting to current display units for thickness and cooling rate.
+    /// </summary>
+    /// <remarks>
+    /// This method is called during construction and after clear operations to ensure
+    /// the UI displays valid initial values without validation errors. Composition values
+    /// are seeded directly (wt% same in all systems), while thickness and cooling rate
+    /// are converted from SI to display units.
+    /// </remarks>
+    private void SeedAllTextFromNumerics()
+    {
+        _carbonField.Seed(Carbon);
+        _siliconField.Seed(Silicon);
+        _manganeseField.Seed(Manganese);
+        _phosphorusField.Seed(Phosphorus);
+        _sulfurField.Seed(Sulfur);
+
+        // Seed DISPLAY text from canonical SI
+        _thicknessField.Seed(ToDisplayFromMm(ThicknessValue, UnitSystem));
+        _coolingField.Seed(ToDisplayFromCPerSec(CoolingRateValue, UnitSystem));
+
+        OnPropertyChanged(nameof(CarbonText));
+        OnPropertyChanged(nameof(SiliconText));
+        OnPropertyChanged(nameof(ManganeseText));
+        OnPropertyChanged(nameof(PhosphorusText));
+        OnPropertyChanged(nameof(SulfurText));
+        OnPropertyChanged(nameof(ThicknessText));
+        OnPropertyChanged(nameof(CoolingRateText));
+
+        OnPropertyChanged(nameof(ThicknessValue));
+        OnPropertyChanged(nameof(CoolingRateValue));
+
+        OnPropertyChanged(nameof(IsValid));
+        InvalidateCanExecute();
+        UpdateCompositionPlot();
+    }
 
     /// <summary>
     /// Determines whether the Calculate command can execute.
@@ -718,239 +1057,151 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     }
 
     /// <summary>
-    /// Executes the cast iron property estimation calculation.
+    /// Rebuilds unit-sensitive validation fields and re-seeds their text from canonical SI values.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method performs the following steps:
+    /// This method is called when <see cref="UnitSystem"/> changes. It performs:
     /// <list type="number">
-    ///   <item><description>Logs calculation request at Information level</description></item>
-    ///   <item><description>Validates all inputs (logs Warning if invalid)</description></item>
-    ///   <item><description>Logs input values at Debug level</description></item>
-    ///   <item><description>Builds domain input models from validated values</description></item>
-    ///   <item><description>Calls the estimation service</description></item>
-    ///   <item><description>Logs results at Information level</description></item>
-    ///   <item><description>Updates gauge visualizations with results</description></item>
-    ///   <item><description>Displays success status</description></item>
-    ///   <item><description>Handles exceptions with Error logging and status display</description></item>
-    /// </list>
-    /// </para>
-    /// </remarks>
-    private void Calculate()
-    {
-        _log.LogInformation("Calculation requested");
-
-        try
-        {
-            if (!CanCalculate())
-            {
-                _log.LogWarning("Calculation blocked due to invalid inputs");
-                _status.Set(AppStatusLevel.Warning, "Check inputs", "One or more fields are invalid.");
-                return;
-            }
-
-            _log.LogDebug(
-                "Inputs: C={Carbon} Si={Silicon} Mn={Manganese} P={Phosphorus} S={Sulfur} Thickness={Thickness} Cooling={Cooling}",
-                Carbon, Silicon, Manganese, Phosphorus, Sulfur, ThicknessMm, CoolingRateCPerSec);
-
-            var inputs = new CastIronInputs(
-                Composition: new CastIronComposition(Carbon, Silicon, Manganese, Phosphorus, Sulfur),
-                Section: new SectionProfile(ThicknessMm, CoolingRateCPerSec));
-
-            Result = _estimator.Estimate(inputs);
-
-            if (Result is not null)
-            {
-                _log.LogInformation(
-                    "Calculation succeeded CE={CE} Graph={Graph} HB={HBMin}-{HBMax}",
-                    Result.CarbonEquivalent,
-                    Result.GraphitizationScore,
-                    Result.EstimatedHardness.MinHB,
-                    Result.EstimatedHardness.MaxHB);
-
-                UpdateGaugeModels(
-                    hasResult: true,
-                    graphScore01: Result.GraphitizationScore,
-                    hbMin: Result.EstimatedHardness.MinHB,
-                    hbMax: Result.EstimatedHardness.MaxHB);
-            }
-            else
-            {
-                _log.LogWarning("Estimator returned null result");
-                UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
-            }
-
-            _status.Set(AppStatusLevel.Ok, "Calculated", "OK");
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Calculation failed");
-
-            Result = null;
-            UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
-
-            _status.Set(AppStatusLevel.Error, "Calculation failed", ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Clears the current estimation result and resets all inputs to default values.
-    /// </summary>
-    /// <remarks>
-    /// This method logs the clear operation at Information level, resets all numeric
-    /// properties to their default values (typical Class 30 gray iron), re-seeds the
-    /// text fields, clears visualizations, and returns the status to "Ready" state.
-    /// </remarks>
-    private void Clear()
-    {
-        _log.LogInformation("Inputs cleared");
-
-        Result = null;
-        UpdateGaugeModels(hasResult: false, graphScore01: 0, hbMin: 0, hbMax: 0);
-
-        // Reset numeric values to defaults
-        Carbon = 3.40;
-        Silicon = 2.10;
-        Manganese = 0.55;
-        Phosphorus = 0.05;
-        Sulfur = 0.02;
-        ThicknessMm = 12.0;
-        CoolingRateCPerSec = 1.0;
-
-        SeedAllTextFromNumerics();
-
-        _status.Set(AppStatusLevel.Ok, "Ready", "Ready for Calculation");
-    }
-
-    // ---------------------------------------
-    // Theme Management (IThemeAware)
-    // ---------------------------------------
-
-    private bool _isDarkTheme = true;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether dark theme is enabled for chart visualizations.
-    /// </summary>
-    /// <value>
-    /// <c>true</c> if dark theme is enabled; otherwise, <c>false</c> for light theme.
-    /// </value>
-    /// <remarks>
-    /// <para>
-    /// When the theme changes:
-    /// <list type="bullet">
-    ///   <item><description>All plot models are rebuilt with appropriate colors</description></item>
-    ///   <item><description>Composition chart is repainted with current values</description></item>
-    ///   <item><description>Gauge charts are repainted with last known results</description></item>
-    ///   <item><description>Theme change is logged at Debug level</description></item>
+    ///   <item><description>Rebuilds thickness field with display-unit validation range and format</description></item>
+    ///   <item><description>Rebuilds cooling rate field with display-unit validation range and format</description></item>
+    ///   <item><description>Seeds both fields from canonical SI values converted to new display units</description></item>
+    ///   <item><description>Raises property change notifications for affected properties</description></item>
     /// </list>
     /// </para>
     /// <para>
-    /// The <see cref="ShellViewModel"/> calls <see cref="SetTheme"/> when the
-    /// application theme changes to keep all visualizations synchronized.
+    /// <strong>Critical:</strong> Canonical SI values (<see cref="ThicknessValue"/>, <see cref="CoolingRateValue"/>)
+    /// are never modified - only the display representation changes.
     /// </para>
     /// </remarks>
-    public bool IsDarkTheme
+    private void RebuildUnitSensitiveFieldsAndReseed()
     {
-        get => _isDarkTheme;
-        set
-        {
-            if (_isDarkTheme == value) return;
-            _isDarkTheme = value;
+        // Rebuild validators + formats to match what the user types (display units)
+        _thicknessField = BuildThicknessField(_unitSystem);
+        _coolingField = BuildCoolingField(_unitSystem);
 
-            _log.LogDebug("Theme changed: DarkTheme={IsDarkTheme}", value);
+        // Seed new fields from canonical SI values (converted to display)
+        _thicknessField.Seed(ToDisplayFromMm(ThicknessValue, _unitSystem));
+        _coolingField.Seed(ToDisplayFromCPerSec(CoolingRateValue, _unitSystem));
 
-            OnPropertyChanged();
-
-            RebuildPlotsForTheme();
-            UpdateCompositionPlot();
-            UpdateGaugeModels(_lastHasResult, _lastGraphScore01, _lastHbMin, _lastHbMax);
-        }
+        // Notify bindings
+        OnPropertyChanged(nameof(ThicknessText));
+        OnPropertyChanged(nameof(CoolingRateText));
+        OnPropertyChanged(nameof(ThicknessValue));
+        OnPropertyChanged(nameof(CoolingRateValue));
+        OnPropertyChanged(nameof(IsValid));
+        InvalidateCanExecute();
     }
 
     /// <summary>
-    /// Sets the chart theme for OxyPlot visualizations.
+    /// Builds a thickness validation field configured for the specified unit system.
     /// </summary>
-    /// <param name="isDark">
-    /// <c>true</c> to enable dark theme; <c>false</c> for light theme.
-    /// </param>
+    /// <param name="units">The unit system determining validation range and format.</param>
+    /// <returns>A configured <see cref="NumericTextField"/> that validates in display units.</returns>
     /// <remarks>
-    /// This method is called by the <see cref="ShellViewModel"/> when the
-    /// application theme changes to ensure consistent theming across the UI.
+    /// For American Standard: validates in inches with range ~0.118-5.906 in (format: "0.###").
+    /// For Standard: validates in millimeters with range 3-150 mm (format: "0.#").
     /// </remarks>
-    public void SetTheme(bool isDark) => IsDarkTheme = isDark;
+    private static NumericTextField BuildThicknessField(UnitSystem units)
+    {
+        // Validate in DISPLAY units, store canonical in mm
+        return units == UnitSystem.AmericanStandard
+            ? NumericTextField.Range(
+                "Thickness",
+                ThicknessMinMm / MmPerIn,
+                ThicknessMaxMm / MmPerIn,
+                ThicknessFormat_In)
+            : NumericTextField.Range(
+                "Thickness",
+                ThicknessMinMm,
+                ThicknessMaxMm,
+                ThicknessFormat_Mm);
+    }
+
+    /// <summary>
+    /// Builds a cooling rate validation field configured for the specified unit system.
+    /// </summary>
+    /// <param name="units">The unit system determining validation range and format.</param>
+    /// <returns>A configured <see cref="NumericTextField"/> that validates in display units.</returns>
+    /// <remarks>
+    /// For American Standard: validates in °F/s with range ~0.018-3.6 °F/s (format: "0.####").
+    /// For Standard: validates in °C/s with range 0.01-2.0 °C/s (format: "0.####").
+    /// </remarks>
+    private static NumericTextField BuildCoolingField(UnitSystem units)
+    {
+        // Validate in DISPLAY units, store canonical in °C/s
+        return units == UnitSystem.AmericanStandard
+            ? NumericTextField.Range(
+                "Cooling rate",
+                CoolingMinCPerSec * FPerC,
+                CoolingMaxCPerSec * FPerC,
+                CoolingFormat_FPerSec)
+            : NumericTextField.Range(
+                "Cooling rate",
+                CoolingMinCPerSec,
+                CoolingMaxCPerSec,
+                CoolingFormat_CPerSec);
+    }
 
     // ============================================================
-    // OxyPlot Models (theme-aware)
+    // Private Methods - Unit Conversions
     // ============================================================
 
-    private PlotModel? _compositionPlotModel;
+    /// <summary>
+    /// Converts a thickness value from display units to canonical millimeters.
+    /// </summary>
+    /// <param name="v">The thickness value in display units.</param>
+    /// <param name="u">The current unit system.</param>
+    /// <returns>The thickness in millimeters (canonical SI).</returns>
+    /// <remarks>
+    /// For American Standard: v (inches) × 25.4 → mm.
+    /// For Standard: v (mm) → mm (no conversion).
+    /// </remarks>
+    private static double ToMmFromDisplay(double v, UnitSystem u)
+        => u == UnitSystem.AmericanStandard ? v * MmPerIn : v;
 
     /// <summary>
-    /// Gets the plot model for the composition bar chart.
+    /// Converts a cooling rate value from display units to canonical °C/s.
     /// </summary>
-    /// <value>
-    /// The <see cref="PlotModel"/> displaying chemical composition as a bar chart.
-    /// </value>
-    public PlotModel CompositionPlotModel
-    {
-        get => _compositionPlotModel!;
-        private set
-        {
-            _compositionPlotModel = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private PlotModel? _graphGaugeModel;
+    /// <param name="v">The cooling rate value in display units.</param>
+    /// <param name="u">The current unit system.</param>
+    /// <returns>The cooling rate in °C/s (canonical SI).</returns>
+    /// <remarks>
+    /// For American Standard: v (°F/s) × (5/9) → °C/s.
+    /// For Standard: v (°C/s) → °C/s (no conversion).
+    /// </remarks>
+    private static double ToCPerSecFromDisplay(double v, UnitSystem u)
+        => u == UnitSystem.AmericanStandard ? v * (5.0 / 9.0) : v;
 
     /// <summary>
-    /// Gets the plot model for the graphitization gauge (donut chart).
+    /// Converts a thickness value from canonical millimeters to display units.
     /// </summary>
-    /// <value>
-    /// The <see cref="PlotModel"/> displaying graphitization score as a gauge.
-    /// </value>
-    public PlotModel GraphGaugeModel
-    {
-        get => _graphGaugeModel!;
-        private set
-        {
-            _graphGaugeModel = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private PlotModel? _hardnessGaugeModel;
+    /// <param name="mm">The thickness value in millimeters (canonical SI).</param>
+    /// <param name="u">The current unit system.</param>
+    /// <returns>The thickness in display units (inches or millimeters).</returns>
+    /// <remarks>
+    /// For American Standard: mm ÷ 25.4 → inches.
+    /// For Standard: mm → mm (no conversion).
+    /// </remarks>
+    private static double ToDisplayFromMm(double mm, UnitSystem u)
+        => u == UnitSystem.AmericanStandard ? mm / MmPerIn : mm;
 
     /// <summary>
-    /// Gets the plot model for the hardness gauge (donut chart).
+    /// Converts a cooling rate value from canonical °C/s to display units.
     /// </summary>
-    /// <value>
-    /// The <see cref="PlotModel"/> displaying hardness as a gauge.
-    /// </value>
-    public PlotModel HardnessGaugeModel
-    {
-        get => _hardnessGaugeModel!;
-        private set
-        {
-            _hardnessGaugeModel = value;
-            OnPropertyChanged();
-        }
-    }
+    /// <param name="cPerSec">The cooling rate value in °C/s (canonical SI).</param>
+    /// <param name="u">The current unit system.</param>
+    /// <returns>The cooling rate in display units (°F/s or °C/s).</returns>
+    /// <remarks>
+    /// For American Standard: cPerSec × (9/5) → °F/s.
+    /// For Standard: cPerSec → °C/s (no conversion).
+    /// </remarks>
+    private static double ToDisplayFromCPerSec(double cPerSec, UnitSystem u)
+        => u == UnitSystem.AmericanStandard ? cPerSec * FPerC : cPerSec;
 
-    /// <summary>
-    /// Series references that belong to the current PlotModels.
-    /// </summary>
-    private BarSeries? _compositionSeries;
-    private PieSeries? _graphGaugeSeries;
-    private PieSeries? _hardnessGaugeSeries;
-
-    /// <summary>
-    /// Cached gauge values to preserve on theme changes.
-    /// </summary>
-    private bool _lastHasResult;
-    private double _lastGraphScore01;
-    private int _lastHbMin;
-    private int _lastHbMax;
+    // ============================================================
+    // Private Methods - Chart Management
+    // ============================================================
 
     /// <summary>
     /// Rebuilds all plot models and series for the current theme.
@@ -961,11 +1212,83 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// </remarks>
     private void RebuildPlotsForTheme()
     {
-        _log.LogDebug("Rebuilding plot models for theme");
-
         CompositionPlotModel = BuildCompositionModel(IsDarkTheme, out _compositionSeries);
         GraphGaugeModel = BuildGaugeModel(IsDarkTheme, out _graphGaugeSeries);
         HardnessGaugeModel = BuildGaugeModel(IsDarkTheme, out _hardnessGaugeSeries);
+    }
+
+    /// <summary>
+    /// Updates the composition bar chart with current input values.
+    /// </summary>
+    /// <remarks>
+    /// This method is called automatically when any composition property changes.
+    /// Values are clamped to valid display ranges before display.
+    /// </remarks>
+    private void UpdateCompositionPlot()
+    {
+        if (_compositionPlotModel is null || _compositionSeries is null)
+            return;
+
+        _compositionSeries.Items.Clear();
+        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Carbon, 0, 5) });
+        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Silicon, 0, 5) });
+        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Manganese, 0, 3) });
+        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Phosphorus, 0, 1) });
+        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Sulfur, 0, 1) });
+
+        _compositionPlotModel.InvalidatePlot(true);
+    }
+
+    /// <summary>
+    /// Updates both gauge visualizations (graphitization and hardness) with result values.
+    /// </summary>
+    /// <param name="hasResult">Whether a valid result is available.</param>
+    /// <param name="graphScore01">The graphitization score (0-1 scale).</param>
+    /// <param name="hbMin">The minimum hardness value in Brinell.</param>
+    /// <param name="hbMax">The maximum hardness value in Brinell.</param>
+    /// <remarks>
+    /// <para>
+    /// This method caches the last values to support theme changes without recalculation.
+    /// Hardness values are normalized to a 0-1 scale for gauge display using a fixed
+    /// window (140-320 HB).
+    /// </para>
+    /// </remarks>
+    private void UpdateGaugeModels(bool hasResult, double graphScore01, int hbMin, int hbMax)
+    {
+        _lastHasResult = hasResult;
+        _lastGraphScore01 = graphScore01;
+        _lastHbMin = hbMin;
+        _lastHbMax = hbMax;
+
+        if (_graphGaugeModel is null || _graphGaugeSeries is null ||
+            _hardnessGaugeModel is null || _hardnessGaugeSeries is null)
+            return;
+
+        UpdateDonut(
+            model: _graphGaugeModel,
+            series: _graphGaugeSeries,
+            value01: hasResult ? Clamp01(graphScore01) : 0.0,
+            fill: IsDarkTheme
+                ? OxyColor.FromArgb(230, 80, 200, 120)
+                : OxyColor.FromArgb(255, 30, 150, 80),
+            isDarkTheme: IsDarkTheme);
+
+        double hbMid = 0.0;
+        if (hasResult && hbMax >= hbMin && hbMin > 0)
+            hbMid = (hbMin + hbMax) / 2.0;
+
+        var hbNorm = hasResult
+            ? Clamp01((hbMid - HbMinWindow) / (HbMaxWindow - HbMinWindow))
+            : 0.0;
+
+        UpdateDonut(
+            model: _hardnessGaugeModel,
+            series: _hardnessGaugeSeries,
+            value01: hbNorm,
+            fill: IsDarkTheme
+                ? OxyColor.FromArgb(230, 120, 170, 220)
+                : OxyColor.FromArgb(255, 45, 105, 200),
+            isDarkTheme: IsDarkTheme);
     }
 
     /// <summary>
@@ -974,7 +1297,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <param name="isDark">Whether to use dark theme colors.</param>
     /// <param name="compositionSeries">Outputs the bar series for composition data.</param>
     /// <returns>A configured <see cref="PlotModel"/> for the composition chart.</returns>
-    private PlotModel BuildCompositionModel(bool isDark, out BarSeries compositionSeries)
+    private static PlotModel BuildCompositionModel(bool isDark, out BarSeries compositionSeries)
     {
         var model = NewThemedModel(isDark);
 
@@ -982,7 +1305,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         var axisLine = isDark ? OxyColor.FromArgb(120, 255, 255, 255) : OxyColor.FromArgb(200, 0, 0, 0);
         var grid = isDark ? OxyColor.FromArgb(30, 255, 255, 255) : OxyColor.FromArgb(70, 0, 0, 0);
 
-        var categoryAxis = new CategoryAxis
+        model.Axes.Add(new CategoryAxis
         {
             Key = "y1",
             Position = AxisPosition.Bottom,
@@ -995,9 +1318,9 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
             FontSize = isDark ? 11 : 12,
             MajorGridlineStyle = LineStyle.None,
             MinorGridlineStyle = LineStyle.None
-        };
+        });
 
-        var valueAxis = new LinearAxis
+        model.Axes.Add(new LinearAxis
         {
             Key = "x1",
             Position = AxisPosition.Left,
@@ -1012,7 +1335,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
             MajorGridlineStyle = LineStyle.Solid,
             MajorGridlineColor = grid,
             MinorGridlineStyle = LineStyle.None
-        };
+        });
 
         compositionSeries = new BarSeries
         {
@@ -1027,10 +1350,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
             StrokeThickness = 1
         };
 
-        model.Axes.Add(categoryAxis);
-        model.Axes.Add(valueAxis);
         model.Series.Add(compositionSeries);
-
         return model;
     }
 
@@ -1040,10 +1360,9 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <param name="isDark">Whether to use dark theme colors.</param>
     /// <param name="gaugeSeries">Outputs the pie series for gauge data.</param>
     /// <returns>A configured <see cref="PlotModel"/> for a gauge visualization.</returns>
-    private PlotModel BuildGaugeModel(bool isDark, out PieSeries gaugeSeries)
+    private static PlotModel BuildGaugeModel(bool isDark, out PieSeries gaugeSeries)
     {
         var model = NewThemedModel(isDark);
-
         model.Title = string.Empty;
         model.PlotMargins = new OxyThickness(0);
         model.Padding = new OxyThickness(0);
@@ -1073,113 +1392,23 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <param name="isDark">Whether to use dark theme colors.</param>
     /// <returns>A configured <see cref="PlotModel"/> with theme-appropriate styling.</returns>
     private static PlotModel NewThemedModel(bool isDark)
-    {
-        if (isDark)
-        {
-            return new PlotModel
+        => isDark
+            ? new PlotModel
             {
                 Background = OxyColors.Transparent,
                 PlotAreaBackground = OxyColors.Transparent,
                 PlotAreaBorderColor = OxyColors.Transparent,
                 TextColor = OxyColor.FromRgb(230, 230, 230),
                 DefaultFontSize = 12
+            }
+            : new PlotModel
+            {
+                Background = OxyColor.FromRgb(255, 255, 255),
+                PlotAreaBackground = OxyColor.FromRgb(255, 255, 255),
+                PlotAreaBorderColor = OxyColor.FromArgb(140, 0, 0, 0),
+                TextColor = OxyColor.FromRgb(20, 20, 20),
+                DefaultFontSize = 13
             };
-        }
-
-        return new PlotModel
-        {
-            Background = OxyColor.FromRgb(255, 255, 255),
-            PlotAreaBackground = OxyColor.FromRgb(255, 255, 255),
-            PlotAreaBorderColor = OxyColor.FromArgb(140, 0, 0, 0),
-            TextColor = OxyColor.FromRgb(20, 20, 20),
-            DefaultFontSize = 13
-        };
-    }
-
-    /// <summary>
-    /// Updates the composition bar chart with current input values.
-    /// </summary>
-    /// <remarks>
-    /// This method is called automatically when any composition property changes.
-    /// Values are clamped to valid display ranges before display.
-    /// Logged at Trace level with all composition values.
-    /// </remarks>
-    private void UpdateCompositionPlot()
-    {
-        if (_compositionPlotModel is null || _compositionSeries is null)
-            return;
-
-        _log.LogTrace(
-            "Updating composition plot C={C} Si={Si} Mn={Mn} P={P} S={S}",
-            Carbon, Silicon, Manganese, Phosphorus, Sulfur);
-
-        _compositionSeries.Items.Clear();
-
-        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Carbon, 0, 5) });
-        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Silicon, 0, 5) });
-        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Manganese, 0, 3) });
-        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Phosphorus, 0, 1) });
-        _compositionSeries.Items.Add(new BarItem { Value = ClampTo(Sulfur, 0, 1) });
-
-        _compositionPlotModel.InvalidatePlot(true);
-    }
-
-    /// <summary>
-    /// Updates both gauge visualizations (graphitization and hardness) with result values.
-    /// </summary>
-    /// <param name="hasResult">Whether a valid result is available.</param>
-    /// <param name="graphScore01">The graphitization score (0-1 scale).</param>
-    /// <param name="hbMin">The minimum hardness value in Brinell.</param>
-    /// <param name="hbMax">The maximum hardness value in Brinell.</param>
-    /// <remarks>
-    /// <para>
-    /// This method caches the last values to support theme changes without recalculation.
-    /// Hardness values are normalized to a 0-1 scale for gauge display using a fixed
-    /// window (140-320 HB).
-    /// </para>
-    /// </remarks>
-    private void UpdateGaugeModels(bool hasResult, double graphScore01, int hbMin, int hbMax)
-    {
-        // Cache values for theme repainting
-        _lastHasResult = hasResult;
-        _lastGraphScore01 = graphScore01;
-        _lastHbMin = hbMin;
-        _lastHbMax = hbMax;
-
-        if (_graphGaugeModel is null || _graphGaugeSeries is null ||
-            _hardnessGaugeModel is null || _hardnessGaugeSeries is null)
-            return;
-
-        UpdateDonut(
-            model: _graphGaugeModel,
-            series: _graphGaugeSeries,
-            value01: hasResult ? Clamp01(graphScore01) : 0.0,
-            fill: IsDarkTheme
-                ? OxyColor.FromArgb(230, 80, 200, 120)
-                : OxyColor.FromArgb(255, 30, 150, 80),
-            isDarkTheme: IsDarkTheme);
-
-        // Normalize HB midpoint into [0..1] using a stable window
-        const double hbMinWindow = 140.0;
-        const double hbMaxWindow = 320.0;
-
-        double hbMid = 0.0;
-        if (hasResult && hbMax >= hbMin && hbMin > 0)
-            hbMid = (hbMin + hbMax) / 2.0;
-
-        var hbNorm = hasResult
-            ? Clamp01((hbMid - hbMinWindow) / (hbMaxWindow - hbMinWindow))
-            : 0.0;
-
-        UpdateDonut(
-            model: _hardnessGaugeModel,
-            series: _hardnessGaugeSeries,
-            value01: hbNorm,
-            fill: IsDarkTheme
-                ? OxyColor.FromArgb(230, 120, 170, 220)
-                : OxyColor.FromArgb(255, 45, 105, 200),
-            isDarkTheme: IsDarkTheme);
-    }
 
     /// <summary>
     /// Updates a donut (gauge) chart with a normalized value.
@@ -1207,6 +1436,10 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         model.InvalidatePlot(true);
     }
 
+    // ============================================================
+    // Private Methods - Utilities
+    // ============================================================
+
     /// <summary>
     /// Clamps a value to the range [0, 1].
     /// </summary>
@@ -1229,9 +1462,9 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         return v;
     }
 
-    // ---------------------------------------
-    // Property Change Notification
-    // ---------------------------------------
+    // ============================================================
+    // Private Methods - Property Change Notification
+    // ============================================================
 
     /// <summary>
     /// Raises the <see cref="PropertyChanged"/> event for the specified property.
@@ -1241,151 +1474,4 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// </param>
     private void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-    // ============================================================
-    // Helper Type: NumericTextField
-    // ============================================================
-
-    /// <summary>
-    /// Encapsulates text-based numeric input with parsing, formatting, and validation logic.
-    /// </summary>
-    /// <remarks>
-    /// This helper class provides a reusable pattern for numeric text fields that:
-    /// <list type="bullet">
-    ///   <item><description>Store raw text separately from parsed numeric values</description></item>
-    ///   <item><description>Validate parsed values against configurable rules</description></item>
-    ///   <item><description>Generate user-friendly error messages for WPF validation</description></item>
-    ///   <item><description>Support seeding from numeric values with consistent formatting</description></item>
-    /// </list>
-    /// This approach enables real-time validation feedback while the user types without
-    /// disrupting the editing experience.
-    /// </remarks>
-    private sealed class NumericTextField
-    {
-        private readonly string _label;
-        private readonly Func<double, string?> _validateNumeric; // returns error message or null
-        private readonly string _format;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NumericTextField"/> class.
-        /// </summary>
-        /// <param name="label">The display label for the field (used in error messages).</param>
-        /// <param name="validateNumeric">
-        /// A function that validates the parsed numeric value, returning an error message or null if valid.
-        /// </param>
-        /// <param name="format">The format string for converting numeric values to text (default: "0.###").</param>
-        private NumericTextField(string label, Func<double, string?> validateNumeric, string format = "0.###")
-        {
-            _label = label;
-            _validateNumeric = validateNumeric;
-            _format = format;
-        }
-
-        /// <summary>
-        /// Gets or sets the raw text value entered by the user.
-        /// </summary>
-        /// <value>
-        /// The text as entered by the user, which may be empty, unparseable, or invalid.
-        /// </value>
-        public string Text { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets a value indicating whether the current text represents a valid value.
-        /// </summary>
-        /// <value>
-        /// <c>true</c> if the text is non-empty, parseable, and passes validation; otherwise, <c>false</c>.
-        /// </value>
-        public bool IsValid => string.IsNullOrEmpty(Error);
-
-        /// <summary>
-        /// Gets the error message for the current text value.
-        /// </summary>
-        /// <value>
-        /// An error message describing the validation failure, or an empty string if valid.
-        /// </value>
-        /// <remarks>
-        /// Error messages are generated for:
-        /// <list type="bullet">
-        ///   <item><description>Empty or whitespace-only text ("X is required.")</description></item>
-        ///   <item><description>Unparseable text ("X must be a number.")</description></item>
-        ///   <item><description>Out-of-range numeric values (custom message from validator)</description></item>
-        /// </list>
-        /// </remarks>
-        public string Error
-        {
-            get
-            {
-                var raw = Text?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(raw))
-                    return $"{_label} is required.";
-
-                if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
-                    return $"{_label} must be a number.";
-
-                var numericError = _validateNumeric(v);
-                return numericError ?? string.Empty;
-            }
-        }
-
-        /// <summary>
-        /// Attempts to parse and validate the current text, returning the numeric value if successful.
-        /// </summary>
-        /// <param name="value">
-        /// When this method returns, contains the parsed and validated numeric value if successful;
-        /// otherwise, contains the default value.
-        /// </param>
-        /// <returns>
-        /// <c>true</c> if the text was successfully parsed and validated; otherwise, <c>false</c>.
-        /// </returns>
-        public bool TryGetValidValue(out double value)
-        {
-            value = default;
-
-            var raw = Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(raw)) return false;
-            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) return false;
-
-            if (!string.IsNullOrEmpty(_validateNumeric(v) ?? string.Empty)) return false;
-
-            value = v;
-            return true;
-        }
-
-        /// <summary>
-        /// Seeds the text field from a numeric value using the configured format.
-        /// </summary>
-        /// <param name="value">The numeric value to format and store as text.</param>
-        /// <remarks>
-        /// This is used during initialization and reset operations to set valid initial text
-        /// without triggering validation errors.
-        /// </remarks>
-        public void Seed(double value)
-            => Text = value.ToString(_format, CultureInfo.InvariantCulture);
-
-        /// <summary>
-        /// Creates a numeric text field with range validation.
-        /// </summary>
-        /// <param name="label">The display label for the field.</param>
-        /// <param name="min">The minimum allowable value (inclusive).</param>
-        /// <param name="max">The maximum allowable value (inclusive).</param>
-        /// <returns>A configured <see cref="NumericTextField"/> with range validation.</returns>
-        public static NumericTextField Range(string label, double min, double max)
-            => new(label, v => (v < min || v > max)
-                ? $"{label} must be between {min:0.##} and {max:0.##}."
-                : null);
-
-        /// <summary>
-        /// Creates a numeric text field with minimum positive value validation.
-        /// </summary>
-        /// <param name="label">The display label for the field.</param>
-        /// <param name="min">The minimum allowable value (must be positive).</param>
-        /// <returns>A configured <see cref="NumericTextField"/> with minimum positive validation.</returns>
-        public static NumericTextField MinPositive(string label, double min)
-            => new(label, v =>
-            {
-                if (v <= 0) return $"{label} must be > 0.";
-                if (v < min) return $"{label} must be >= {min:0.####}.";
-                return null;
-            });
-    }
 }

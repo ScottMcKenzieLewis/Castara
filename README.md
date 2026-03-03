@@ -1,186 +1,82 @@
 ﻿# Castara
 
-A modern WPF application for cast iron composition analysis and property estimation. Castara provides real-time calculations of carbon equivalent, graphitization potential, and hardness predictions based on chemical composition and section parameters. Built with .NET 8, WPF, MVVM, and xUnit/Moq/FsCheck testing.
+**Cast Iron Property Estimation & Analysis Tool**
 
-## Screenshot
+A modern WPF desktop application for estimating mechanical properties of gray cast iron based on chemical composition and casting section characteristics. Built with .NET 8 and Material Design, Castara provides foundry engineers and metallurgists with an intuitive interface for rapid property predictions with visual feedback.
 
-<img width="1372" height="1000" alt="image" src="https://github.com/user-attachments/assets/fe9267d8-2532-4376-acf5-0bdd7ad0af42" />
+---
 
-## Demo
+## ⚠️ Important Disclaimer
 
-https://github.com/user-attachments/assets/599823f2-6d54-4465-a238-31a794fc612d
+**FOR EDUCATIONAL AND REFERENCE PURPOSES ONLY**
 
-## Overview
+This software is provided as an **educational tool** for learning about cast iron metallurgy and property estimation. It is **NOT intended for production use** or critical engineering decisions.
 
-Castara helps metallurgists and engineers analyze cast iron compositions by:
-- Calculating carbon equivalent and key metallurgical factors
-- Predicting graphitization tendency and hardness
-- Identifying potential risks and quality concerns
-- Visualizing composition data and gauge metrics
+**Key Limitations:**
+- Estimates are based on simplified empirical models
+- Does not account for all metallurgical variables
+- Cannot replace laboratory testing and analysis
+- Should not be used for safety-critical applications
+
+**For Production Use:**
+- Consult qualified metallurgical engineers
+- Perform appropriate laboratory testing
+- Follow industry standards (ASTM, ISO, etc.)
+- Validate all calculations independently
+- Conduct physical property verification
+
+**By using this software, you acknowledge that the authors bear no responsibility for any decisions made based on its output.**
+
+---
 
 ## Features
 
-### 🧪 Composition Analysis
-- Input chemical composition (C, P, Si, S, Mn)
-- Section parameters (thickness, cooling rate)
-- Real-time carbon equivalent calculation
-- Cooling and thickness factor computation
+### Core Functionality
+- **Real-Time Property Estimation**: Calculate carbon equivalent, graphitization tendency, and hardness ranges from composition inputs
+- **Risk Analysis**: Automatic identification of potential casting defects (chill risk, shrinkage, machinability concerns)
+- **Unit System Support**: Seamless switching between Standard (SI) and American Standard units with automatic conversion
+- **Input Validation**: Real-time validation with field-level error messages and visual feedback
 
-### 📊 Visualization
-- Interactive composition bar charts
-- Graphitization and hardness gauge displays
-- Material Design UI with dark/light theme support
+### Visualization
+- **Composition Bar Chart**: Visual representation of alloy element percentages
+- **Gauge Displays**: Graphitization score and hardness range indicators
+- **Theme Support**: Dark/Light mode with synchronized chart theming
 
-### ⚠️ Risk Assessment
-- Automated risk flag detection
-- Severity-coded warnings (Critical, Warning, Info)
-- Detailed messages for each risk condition
-- Validation against metallurgical standards
+### Technical Features
+- **MVVM Architecture**: Clean separation of concerns with comprehensive view model testing
+- **Logging Infrastructure**: Built-in diagnostic logging with searchable, filterable log viewer
+- **Material Design UI**: Modern, professional interface using MaterialDesignInXaml
+- **Type-Safe Domain Models**: Robust domain layer with validation constraints
 
-### 💡 User Experience
-- Contextual tooltips for all inputs
-- Responsive Material Design interface
-- Clear visual feedback
-- Easy data entry and clearing
-- Log viewer with search, filtering, and details view
+---
 
 ## Technology Stack
 
-### Frontend
-- **WPF** (.NET 8) - Modern desktop UI framework
-- **Material Design in XAML** - Material Design components and theming
-- **OxyPlot** - Advanced charting and data visualization
+- **.NET 8.0** - Latest LTS framework
+- **WPF** - Windows Presentation Foundation for rich desktop UI
+- **C# 12.0** - Modern language features including primary constructors and record types
+- **OxyPlot** - High-performance chart visualizations
+- **MaterialDesignInXaml** - Material Design theming
+- **Microsoft.Extensions.Logging** - Structured logging infrastructure
+- **xUnit** - Unit testing framework with Moq
 
-### Architecture
-- **MVVM Pattern** - Clean separation of concerns
-- **Domain-Driven Design** - Rich domain models and services
-- **Dependency Injection** - Loosely coupled components
-
-### Active Projects
-
-#### **Castara.Domain**
-The core business logic layer containing:
-- **Composition Models**: Chemical composition value objects and validation
-- **Estimation Services**: Metallurgical calculation algorithms
-- **Domain Models**: Input/output models for cast iron analysis
-- **Business Rules**: Guards and validators for domain integrity
-
-This layer has no dependencies on UI or infrastructure concerns and can be unit tested independently.
-
-#### **Castara.Wpf**
-The WPF presentation layer containing:
-- **Views**: XAML user interface definitions
-- **ViewModels**: Presentation logic following MVVM pattern
-- **Services**: UI-specific services (theming, status management)
-- **Infrastructure**: Commands, value converters, theme abstractions, helpers
-- **Application Bootstrap**: Dependency injection configuration
-
-This layer depends on Castara.Domain for business logic but is independent of data access concerns.
-
-### Staged Projects
-
-#### **Castara.Application** (Future)
-Reserved for application layer concerns:
-- Command/Query handlers (CQRS pattern)
-- Application services and orchestration
-- Use case implementations
-- DTOs and mapping profiles
-
-This layer will mediate between the presentation and domain layers, coordinating complex workflows.
-
-#### **Castara.Infrastructure** (Future)
-Reserved for infrastructure concerns:
-- Database repositories and Entity Framework Core
-- External service integrations (stock inventory service)
-- File system operations (profile persistence)
-- Logging and monitoring
-
-This layer will implement persistence and external communication needs identified in the TODO/Roadmap.
-
-### Test Projects
-
-#### **Castara.Domain.Tests**
-Comprehensive unit tests for domain logic:
-- Guard boundary tests for input validation
-- Contract tests for determinism and value ranges
-- Cooling model tests for logarithmic interpolation
-- Metallurgical trend tests ("money tests") for physical correctness
-
-#### **Castara.Wpf.Tests**
-Presentation layer tests using Moq:
-- View model initialization tests
-- Command behavior and validation tests
-- Status service integration tests
-- Theme switching and chart update tests
-
-### Design Principles
-
-The solution follows these architectural principles:
-
-1. **Dependency Direction**: Dependencies flow inward toward the domain
-2. **Separation of Concerns**: Each project has a single, well-defined responsibility
-3. **Testability**: Core domain logic is isolated and easily testable
-4. **Extensibility**: Staged projects provide clear extension points for future features
-5. **SOLID Principles**: Interface-based design with dependency injection
-
-## Getting Started
-
-### Prerequisites
-- .NET 8 SDK or later
-- Visual Studio 2022 or Visual Studio Code
-- Windows 10/11 (for WPF)
-
-### Installation
-
-1. **Clone the repository** - git clone https://github.com/ScottMcKenzieLewis/Castara.git cd Castara
-2. **Restore NuGet packages** - dotnet restore
-3. **Build the solution** - dotnet build
-4. **Run the application** - dotnet run --project src/Castara.Wpf
-
-## Usage
-
-### Basic Workflow
-
-1. **Enter Composition**
-- Input weight percentages for C, P, Si, S, Mn
-- Use tooltips (ℹ️) for guidance on typical ranges
-
-2. **Set Section Parameters**
-- Thickness (mm) - Physical section thickness
-- Cooling Rate (°C/s) - Expected cooling rate
-
-3. **Calculate**
-- Click "Calculate" to run the analysis
-- Review KPIs: Carbon Equivalent, Graphitization, Hardness
-- Check ModelInputs for derived factors
-
-4. **Review Results**
-- Examine composition visualization
-- Check gauge readings for graphitization and hardness
-- Review any risk flags in the bottom panel
-
-5. **Clear**
-- Use "Clear" button to reset all inputs
-
-### Example Values
-
-**Typical Gray Iron:**
-- Carbon: 3.4%
-- Silicon: 2.1%
-- Manganese: 0.7%
-- Phosphorus: 0.05%
-- Sulfur: 0.08%
-- Thickness: 25mm
-- Cooling Rate: 1.5°C/s
+---
 
 ## Architecture
+
+### Project Structure
+- **Castara.sln**: Solution file containing all projects
+- **README.md**: This documentation file
+- **/.github**: GitHub-specific files, including issue templates
+- **/assets**: Demo data files and application assets
+- **/docs**: Additional documentation (if any)
 
 ### Domain Layer
 The domain layer contains pure business logic:
 - **CastIronEstimator**: Core estimation algorithms
 - **SectionProfile**: Input validation and modeling
 - **CastIronEstimate**: Result encapsulation
-- **SectionGuards**: Businessrule validation
+- **SectionGuards**: Business rule validation
 
 ### Presentation Layer
 The WPF layer handles UI concerns:
@@ -214,11 +110,10 @@ Each flag includes:
 ## TODO / Roadmap
 
 ### Planned Features
-- [ ] **UI Settings** - Allow the use of US Customary Units
 - [ ] **Stock Inventory Integration** - Constrain composition inputs to feed from stock inventory service, ensuring accuracy and traceability to available materials
 - [ ] **Profile Persistence** - Allow saving of section profiles and composition data to database for historical tracking and analysis
 - [ ] **Additional Telemetry** - Incorporate domain logging and events
-- [ ] **Logging UI** Separate logging dialog into separate view from main window
+- [ ] **Logging UI** - Separate logging dialog into separate view from main window
 - [ ] **Expand Test Coverage** - Always
 
 ## Contributing
@@ -226,7 +121,7 @@ Each flag includes:
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Development Guidelines
-- Follow existingcode style and conventions
+- Follow existing code style and conventions
 - Write meaningful commit messages
 - Include unit tests for new features
 - Update documentation as needed
@@ -273,7 +168,31 @@ For issues, questions, or contributions, please visit:
 
 ---
 
-**Note**: This application provides estimates based on empirical models and should not be used as the sole basis for critical metallurgical decisions. Always consult with qualified metallurgists and perform appropriate testing.
+## Professional Engineering Notice
+
+**Castara is an educational and reference tool.** For production environments, always:
+
+1. **Engage Professional Engineers**: Consult with licensed metallurgical engineers and certified foundry professionals
+2. **Follow Standards**: Adhere to relevant industry standards (ASTM A48, A536, ISO 185, etc.)
+3. **Laboratory Testing**: Conduct appropriate physical and chemical testing
+4. **Quality Control**: Implement proper QC procedures and documentation
+5. **Material Certifications**: Obtain and maintain proper material certifications
+6. **Safety Protocols**: Follow all applicable safety regulations and guidelines
+
+This software provides **estimates only** and cannot account for all real-world variables including:
+- Actual melting practices and equipment variations
+- Inoculant effects and fading
+- Mold design and gating systems
+- Pouring temperature and technique
+- Cooling rates and heat treatment
+- Microstructure variations
+- Environmental conditions
+
+**Always verify critical properties through standardized testing and professional metallurgical analysis.**
+
+---
+
+*Educational Tool - Not for Production Use Without Professional Engineering Validation*
 
 
 

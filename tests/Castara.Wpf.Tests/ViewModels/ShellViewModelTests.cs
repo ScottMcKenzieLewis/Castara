@@ -15,76 +15,62 @@ using Xunit;
 namespace Castara.Wpf.Tests.ViewModels;
 
 /// <summary>
-/// Contains unit tests for <see cref="ShellViewModel"/> to verify shell coordination,
-/// log management, status service integration, theme synchronization, and filtering behavior.
+/// Unit tests for <see cref="ShellViewModel"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This test suite validates the ShellViewModel through comprehensive behavioral testing:
+/// These tests verify the shell view model's core responsibilities:
+/// <list type="bullet">
+///   <item><description>Initialization and default state setup</description></item>
+///   <item><description>Theme coordination between Material Design and custom visualizations</description></item>
+///   <item><description>Unit system management and propagation to unit-aware components</description></item>
+///   <item><description>Status service integration and reactive UI updates</description></item>
+///   <item><description>Log management with filtering, searching, and sorting</description></item>
+///   <item><description>Command execution for log viewer operations</description></item>
+/// </list>
 /// </para>
 /// <para>
-/// <strong>Initialization Tests:</strong> Verify constructor behavior, initial status, and log view setup.
-/// </para>
-/// <para>
-/// <strong>Status Integration Tests:</strong> Ensure status changes from the service propagate
-/// to the view model's status properties through property change notifications.
-/// </para>
-/// <para>
-/// <strong>Log Management Tests:</strong> Validate log count tracking, command behavior (show, close, clear),
-/// and collection change handling.
-/// </para>
-/// <para>
-/// <strong>Filtering Tests:</strong> Verify log filtering by exact level and search text with
-/// case-insensitive matching across message, category, and exception.
-/// </para>
-/// <para>
-/// <strong>Theme Coordination Tests:</strong> Ensure theme changes are properly coordinated across
-/// both the theme service (Material Design) and theme-aware components (OxyPlot charts).
-/// </para>
-/// <para>
-/// The tests use Moq for dependency isolation and custom factory methods to create
-/// consistent test fixtures with properly configured mocks.
+/// <strong>Mock Strategy:</strong> The tests use strict mock behavior to ensure only
+/// expected interactions occur, making tests fail fast when implementation changes
+/// introduce unexpected side effects.
 /// </para>
 /// </remarks>
 public sealed class ShellViewModelTests
 {
     // ============================================================
-    // VM Factory
+    // Test Helpers - View Model Factory
     // ============================================================
 
     /// <summary>
-    /// Creates a <see cref="ShellViewModel"/> instance with mocked dependencies for testing.
+    /// Creates a <see cref="ShellViewModel"/> instance with all dependencies mocked.
     /// </summary>
     /// <param name="entries">
-    /// Outputs the backing observable collection for log entries, allowing test manipulation.
+    /// The underlying observable collection backing the log store for direct test manipulation.
     /// </param>
-    /// <param name="logStoreMock">
-    /// Outputs the mocked <see cref="IObservableLogStore"/> for verification.
-    /// </param>
-    /// <param name="statusMock">
-    /// Outputs the mocked <see cref="IStatusService"/> for verification.
-    /// </param>
-    /// <param name="themeMock">
-    /// Outputs the mocked <see cref="IThemeService"/> for verification.
-    /// </param>
-    /// <param name="themeAwareMock">
-    /// Outputs the mocked <see cref="IThemeAware"/> (calculations view model) for verification.
-    /// </param>
-    /// <returns>
-    /// A <see cref="ShellViewModel"/> instance with all dependencies mocked and ready for testing.
-    /// </returns>
+    /// <param name="logStoreMock">The mocked log store.</param>
+    /// <param name="statusMock">The mocked status service with reactive property change support.</param>
+    /// <param name="themeMock">The mocked theme service for Material Design theming.</param>
+    /// <param name="themeAwareMock">The mocked theme-aware component (typically the calculations view model).</param>
+    /// <param name="unitAwareMock">The mocked unit-aware component for unit system propagation.</param>
+    /// <returns>A fully initialized shell view model ready for testing.</returns>
     /// <remarks>
     /// <para>
-    /// This factory method sets up the required mocks with strict behavior to catch unexpected
-    /// interactions. It pre-configures expected calls during construction:
-    /// <list type="bullet">
-    ///   <item><description><see cref="IThemeService.SetDark"/> for initial theme setup</description></item>
-    ///   <item><description><see cref="IThemeAware.SetTheme"/> for chart theme coordination</description></item>
+    /// This factory method sets up all required mocks with appropriate behaviors to support
+    /// the shell view model's initialization sequence:
+    /// <list type="number">
+    ///   <item><description>Theme service and theme-aware component are configured to accept theme changes</description></item>
+    ///   <item><description>Unit-aware component is configured to accept unit system changes</description></item>
+    ///   <item><description>Log store is backed by a real observable collection for realistic behavior</description></item>
+    ///   <item><description>Status service supports reactive property change notifications</description></item>
     /// </list>
     /// </para>
     /// <para>
-    /// The output parameters provide direct access to mock objects and test data for assertions
-    /// and verification in individual tests.
+    /// During construction, the view model:
+    /// <list type="bullet">
+    ///   <item><description>Sets <c>IsDarkMode = true</c> (calls theme service and theme-aware component)</description></item>
+    ///   <item><description>Sets <c>UnitSystem = Standard</c> (propagates to unit-aware component)</description></item>
+    ///   <item><description>Calls <c>status.Set("Ready", ...)</c></description></item>
+    /// </list>
     /// </para>
     /// </remarks>
     private static ShellViewModel CreateVm(
@@ -92,14 +78,17 @@ public sealed class ShellViewModelTests
         out Mock<IObservableLogStore> logStoreMock,
         out Mock<IStatusService> statusMock,
         out Mock<IThemeService> themeMock,
-        out Mock<IThemeAware> themeAwareMock)
+        out Mock<IThemeAware> themeAwareMock,
+        out Mock<IUnitAware> unitAwareMock)
     {
         themeMock = new Mock<IThemeService>(MockBehavior.Strict);
         themeAwareMock = new Mock<IThemeAware>(MockBehavior.Strict);
+        unitAwareMock = new Mock<IUnitAware>(MockBehavior.Strict);
 
-        // ShellViewModel sets IsDarkMode=true during construction
+        // Setup mocks to support constructor initialization
         themeMock.Setup(x => x.SetDark(It.IsAny<bool>()));
         themeAwareMock.Setup(x => x.SetTheme(It.IsAny<bool>()));
+        unitAwareMock.SetupSet(x => x.UnitSystem = It.IsAny<UnitSystem>());
 
         logStoreMock = CreateLogStoreMock(out entries);
         statusMock = CreateStatusServiceMock();
@@ -108,34 +97,27 @@ public sealed class ShellViewModelTests
             themeMock.Object,
             statusMock.Object,
             themeAwareMock.Object,
+            unitAwareMock.Object,
             logStoreMock.Object);
     }
 
     // ============================================================
-    // Log Store Mock (Moq)
+    // Test Helpers - Mock Factories
     // ============================================================
 
     /// <summary>
-    /// Creates a mock <see cref="IObservableLogStore"/> with a backing observable collection for testing.
+    /// Creates a mock <see cref="IObservableLogStore"/> backed by a real observable collection.
     /// </summary>
     /// <param name="entries">
-    /// Outputs the backing <see cref="ObservableCollection{T}"/> that tests can manipulate directly.
+    /// Outputs the underlying observable collection for direct test manipulation.
     /// </param>
-    /// <returns>
-    /// A <see cref="Mock{T}"/> of <see cref="IObservableLogStore"/> configured with strict behavior.
-    /// </returns>
+    /// <returns>A configured mock log store.</returns>
     /// <remarks>
-    /// <para>
-    /// The mock is configured to:
-    /// <list type="bullet">
-    ///   <item><description>Return a <see cref="ReadOnlyObservableCollection{T}"/> wrapping the backing collection</description></item>
-    ///   <item><description>Clear the backing collection when <see cref="IObservableLogStore.Clear"/> is called</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// This approach allows tests to add/remove entries directly through the output parameter
-    /// while the view model sees them through the read-only wrapper, simulating real usage.
-    /// </para>
+    /// The mock uses a real <see cref="ObservableCollection{T}"/> wrapped in a
+    /// <see cref="ReadOnlyObservableCollection{T}"/> to provide realistic collection
+    /// change notifications while preventing modification through the read-only interface.
+    /// This approach allows tests to manipulate entries directly while verifying that
+    /// the view model properly reacts to collection changes.
     /// </remarks>
     private static Mock<IObservableLogStore> CreateLogStoreMock(out ObservableCollection<LogEntry> entries)
     {
@@ -150,39 +132,29 @@ public sealed class ShellViewModelTests
         return mock;
     }
 
-    // ============================================================
-    // Status Service Mock (Moq) - Current is READ-ONLY, backed by field
-    // ============================================================
-
     /// <summary>
-    /// Creates a mock <see cref="IStatusService"/> with reactive property change notification support.
+    /// Creates a mock <see cref="IStatusService"/> with reactive property change support.
     /// </summary>
-    /// <returns>
-    /// A <see cref="Mock{T}"/> of <see cref="IStatusService"/> configured to simulate property changes.
-    /// </returns>
+    /// <returns>A configured mock status service.</returns>
     /// <remarks>
     /// <para>
-    /// Since <see cref="IStatusService.Current"/> is read-only, this mock uses a backing field
-    /// to store the current status state. When <see cref="IStatusService.Set"/> is called:
-    /// <list type="number">
-    ///   <item><description>The backing field is updated with the new status</description></item>
-    ///   <item><description><see cref="INotifyPropertyChanged.PropertyChanged"/> is raised for "Current"</description></item>
+    /// This mock provides a realistic implementation that:
+    /// <list type="bullet">
+    ///   <item><description>Maintains internal state for the <see cref="IStatusService.Current"/> property</description></item>
+    ///   <item><description>Raises <see cref="INotifyPropertyChanged.PropertyChanged"/> events when <see cref="IStatusService.Set"/> is called</description></item>
+    ///   <item><description>Allows tests to subscribe to property change events</description></item>
     /// </list>
     /// </para>
     /// <para>
-    /// This simulates the real service's behavior, allowing tests to verify that the view model
-    /// responds correctly to status changes through property change notifications.
-    /// </para>
-    /// <para>
-    /// The mock supports add/remove for <see cref="INotifyPropertyChanged.PropertyChanged"/>
-    /// event subscription, which the view model uses to react to status updates.
+    /// The <see cref="IStatusService.Current"/> property is read-only and backed by a captured variable
+    /// that is updated when <see cref="IStatusService.Set"/> is called. This pattern allows tests to
+    /// verify that the view model properly reacts to status changes from the service.
     /// </para>
     /// </remarks>
     private static Mock<IStatusService> CreateStatusServiceMock()
     {
         var mock = new Mock<IStatusService>(MockBehavior.Strict);
 
-        // Backing field that Current returns (Current is read-only in the interface)
         StatusState current = new(
             AppStatusLevel.Ok,
             "Init",
@@ -190,11 +162,9 @@ public sealed class ShellViewModelTests
 
         mock.SetupGet(x => x.Current).Returns(() => current);
 
-        // ShellViewModel subscribes to PropertyChanged
         mock.SetupAdd(x => x.PropertyChanged += It.IsAny<PropertyChangedEventHandler>());
         mock.SetupRemove(x => x.PropertyChanged -= It.IsAny<PropertyChangedEventHandler>());
 
-        // When Set is called, update backing field and raise PropertyChanged(Current)
         mock.Setup(x => x.Set(
                 It.IsAny<AppStatusLevel>(),
                 It.IsAny<string>(),
@@ -212,17 +182,38 @@ public sealed class ShellViewModelTests
     }
 
     // ============================================================
-    // Tests: Constructor / Initialization
+    // Test Helpers - Test Data Factories
     // ============================================================
 
     /// <summary>
-    /// Verifies that the constructor sets the initial status to "Ready" with appropriate message.
+    /// Creates a test <see cref="LogEntry"/> with the specified parameters.
     /// </summary>
-    /// <remarks>
-    /// This test ensures the shell view model starts in a ready state, informing users that
-    /// the application is prepared for calculations. The status properties should reflect
-    /// the initial status set during construction.
-    /// </remarks>
+    /// <param name="ts">The timestamp for the log entry.</param>
+    /// <param name="level">The log level.</param>
+    /// <param name="message">The log message.</param>
+    /// <param name="category">The logger category name (default: "Test").</param>
+    /// <param name="ex">An optional exception associated with the log entry.</param>
+    /// <returns>A configured log entry for test assertions.</returns>
+    private static LogEntry MakeLog(
+        DateTimeOffset ts,
+        LogLevel level,
+        string message,
+        string category = "Test",
+        Exception? ex = null)
+        => new(
+            Timestamp: ts,
+            Level: level,
+            Category: category,
+            EventId: new EventId(0, null),
+            Message: message,
+            Exception: ex,
+            Properties: Array.Empty<KeyValuePair<string, object?>>(),
+            Scopes: Array.Empty<KeyValuePair<string, object?>>());
+
+    // ============================================================
+    // Tests - Constructor and Initialization
+    // ============================================================
+
     [Fact]
     public void Constructor_SetsInitialStatus()
     {
@@ -230,6 +221,7 @@ public sealed class ShellViewModelTests
             out _,
             out _,
             out var statusMock,
+            out _,
             out _,
             out _);
 
@@ -243,29 +235,26 @@ public sealed class ShellViewModelTests
         Assert.Equal("Ready for Calculation", vm.StatusRightText);
     }
 
-    /// <summary>
-    /// Verifies that the constructor initializes the log entries collection view with
-    /// descending timestamp sort (newest entries first).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This test validates the sort configuration by:
-    /// <list type="number">
-    ///   <item><description>Adding two log entries with different timestamps</description></item>
-    ///   <item><description>Refreshing the view to apply sorting</description></item>
-    ///   <item><description>Verifying the newest entry appears first</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Newest-first ordering is important for log viewing, as users typically want to see
-    /// the most recent events at the top of the list.
-    /// </para>
-    /// </remarks>
+    [Fact]
+    public void Constructor_InitializesCurrentViewModel_ToThemeAware()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out _,
+            out var themeAwareMock,
+            out _);
+
+        Assert.Same(themeAwareMock.Object, vm.CurrentViewModel);
+    }
+
     [Fact]
     public void Constructor_InitializesLogView_SortedNewestFirst()
     {
         var vm = CreateVm(
             out var entries,
+            out _,
             out _,
             out _,
             out _,
@@ -276,33 +265,126 @@ public sealed class ShellViewModelTests
 
         vm.LogEntriesView.Refresh();
 
-        // ICollectionView doesn't have GetItemAt; enumerate to check order
         var first = vm.LogEntriesView.Cast<LogEntry>().First();
         Assert.Equal("new", first.Message);
     }
 
+    [Fact]
+    public void Constructor_InitializesTheme_ToDark()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out var themeMock,
+            out var themeAwareMock,
+            out _);
+
+        // Verify constructor effects (IsDarkMode = true)
+        themeMock.Verify(t => t.SetDark(true), Times.Once);
+        themeAwareMock.Verify(t => t.SetTheme(true), Times.Once);
+
+        Assert.True(vm.IsDarkMode);
+    }
+
+    [Fact]
+    public void Constructor_InitializesUnitSystem_ToStandard_AndPropagates()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out var unitAwareMock);
+
+        Assert.Equal(UnitSystem.Standard, vm.UnitSystem);
+        Assert.False(vm.IsAmericanStandard);
+
+        // _unitSystem starts as Standard, so constructor's UnitSystem = Standard is a no-op
+        unitAwareMock.VerifySet(u => u.UnitSystem = UnitSystem.Standard, Times.Never);
+    }
+
     // ============================================================
-    // Tests: Status Change Propagation
+    // Tests - Theme Coordination
     // ============================================================
 
-    /// <summary>
-    /// Verifies that status changes from the status service propagate to the view model's
-    /// status properties through property change notifications.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This test validates the reactive binding chain:
-    /// <list type="number">
-    ///   <item><description>Status service raises PropertyChanged for "Current"</description></item>
-    ///   <item><description>View model receives notification and raises PropertyChanged for status properties</description></item>
-    ///   <item><description>UI bindings update to reflect new status values</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// The test verifies that all three status properties (StatusLeftText, StatusRightText, StatusBrush)
-    /// notify of changes and return updated values from the service.
-    /// </para>
-    /// </remarks>
+    [Fact]
+    public void IsDarkMode_Setter_CallsThemeService_AndThemeAware()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out var themeMock,
+            out var themeAwareMock,
+            out _);
+
+        // Ignore constructor calls
+        themeMock.Invocations.Clear();
+        themeAwareMock.Invocations.Clear();
+
+        vm.IsDarkMode = false;
+
+        themeMock.Verify(t => t.SetDark(false), Times.Once);
+        themeAwareMock.Verify(t => t.SetTheme(false), Times.Once);
+    }
+
+    // ============================================================
+    // Tests - Unit System Management
+    // ============================================================
+
+    [Fact]
+    public void SettingUnitSystem_PropagatesToUnitAware_AndNotifies()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out var unitAwareMock);
+
+        unitAwareMock.Invocations.Clear(); // Ignore constructor propagation
+
+        vm.UnitSystem = UnitSystem.AmericanStandard;
+
+        unitAwareMock.VerifySet(u => u.UnitSystem = UnitSystem.AmericanStandard, Times.Once);
+
+        Assert.True(vm.IsAmericanStandard);
+        Assert.Equal("American", vm.UnitSystemRightText);
+    }
+
+    [Fact]
+    public void SettingIsAmericanStandard_TogglesUnitSystem()
+    {
+        var vm = CreateVm(
+            out _,
+            out _,
+            out _,
+            out _,
+            out _,
+            out var unitAwareMock);
+
+        unitAwareMock.Invocations.Clear();
+
+        vm.IsAmericanStandard = true;
+
+        Assert.Equal(UnitSystem.AmericanStandard, vm.UnitSystem);
+        unitAwareMock.VerifySet(u => u.UnitSystem = UnitSystem.AmericanStandard, Times.Once);
+
+        unitAwareMock.Invocations.Clear();
+
+        vm.IsAmericanStandard = false;
+
+        Assert.Equal(UnitSystem.Standard, vm.UnitSystem);
+        unitAwareMock.VerifySet(u => u.UnitSystem = UnitSystem.Standard, Times.Once);
+    }
+
+    // ============================================================
+    // Tests - Status Service Integration
+    // ============================================================
+
     [Fact]
     public void When_StatusServiceCurrentChanges_ViewModelNotifiesBindings()
     {
@@ -310,6 +392,7 @@ public sealed class ShellViewModelTests
             out _,
             out _,
             out var statusMock,
+            out _,
             out _,
             out _);
 
@@ -334,22 +417,15 @@ public sealed class ShellViewModelTests
     }
 
     // ============================================================
-    // Tests: Log Counts + Commands
+    // Tests - Log Management - Counts and State
     // ============================================================
 
-    /// <summary>
-    /// Verifies that <see cref="ShellViewModel.LogCount"/> and <see cref="ShellViewModel.HasLogs"/>
-    /// accurately track the number of entries in the log store.
-    /// </summary>
-    /// <remarks>
-    /// These properties are used for UI display and conditional visibility of log-related
-    /// controls. The test verifies they update correctly as entries are added to the store.
-    /// </remarks>
     [Fact]
     public void LogCount_AndHasLogs_TrackStoreEntries()
     {
         var vm = CreateVm(
             out var entries,
+            out _,
             out _,
             out _,
             out _,
@@ -364,19 +440,15 @@ public sealed class ShellViewModelTests
         Assert.True(vm.HasLogs);
     }
 
-    /// <summary>
-    /// Verifies that <see cref="ShellViewModel.ShowLogsCommand"/> and
-    /// <see cref="ShellViewModel.CloseLogsCommand"/> correctly toggle the
-    /// <see cref="ShellViewModel.IsLogsOpen"/> property.
-    /// </summary>
-    /// <remarks>
-    /// These commands control the visibility of the log viewer dialog. The test ensures
-    /// they properly open and close the dialog through property changes.
-    /// </remarks>
+    // ============================================================
+    // Tests - Log Management - Commands
+    // ============================================================
+
     [Fact]
     public void ShowAndCloseLogsCommand_TogglesIsLogsOpen()
     {
         var vm = CreateVm(
+            out _,
             out _,
             out _,
             out _,
@@ -392,30 +464,13 @@ public sealed class ShellViewModelTests
         Assert.False(vm.IsLogsOpen);
     }
 
-    /// <summary>
-    /// Verifies that <see cref="ShellViewModel.ClearLogsCommand"/> clears the log store,
-    /// resets the selected entry, and updates count properties.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This test validates the complete clear workflow:
-    /// <list type="number">
-    ///   <item><description>Calls <see cref="IObservableLogStore.Clear"/> on the log store</description></item>
-    ///   <item><description>Clears the selected log entry</description></item>
-    ///   <item><description>Updates LogCount and HasLogs properties</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Clearing logs is important for managing memory usage and resetting the diagnostic
-    /// state during long-running sessions.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void ClearLogsCommand_ClearsStore_AndResetsSelection()
     {
         var vm = CreateVm(
             out var entries,
             out var storeMock,
+            out _,
             out _,
             out _,
             out _);
@@ -437,26 +492,9 @@ public sealed class ShellViewModelTests
     }
 
     // ============================================================
-    // Tests: Filtering
+    // Tests - Log Management - Filtering by Level
     // ============================================================
 
-    /// <summary>
-    /// Verifies that log filtering by exact level works correctly, showing only entries
-    /// matching the selected log level.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This test validates exact level matching (not minimum level filtering):
-    /// <list type="bullet">
-    ///   <item><description>Information entries are hidden when Error is selected</description></item>
-    ///   <item><description>Only Error entries are visible</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Exact level filtering allows users to focus on specific log levels without
-    /// seeing higher or lower severity entries.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void LogFilter_ByExactLevel_Works()
     {
@@ -465,14 +503,13 @@ public sealed class ShellViewModelTests
             out _,
             out _,
             out _,
+            out _,
             out _);
 
         entries.Add(MakeLog(DateTimeOffset.UtcNow, LogLevel.Information, "info"));
         entries.Add(MakeLog(DateTimeOffset.UtcNow.AddSeconds(-1), LogLevel.Error, "err"));
 
-        // Set filter option to Error (exact match)
         vm.SelectedLogLevelOption = vm.LogLevelOptions.First(o => o.Level == LogLevel.Error);
-
         vm.LogEntriesView.Refresh();
 
         Assert.Single(vm.LogEntriesView.Cast<LogEntry>());
@@ -481,28 +518,16 @@ public sealed class ShellViewModelTests
         Assert.Equal(LogLevel.Error, only.Level);
     }
 
-    /// <summary>
-    /// Verifies that log filtering by search text works correctly with case-insensitive matching.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The search filter performs case-insensitive substring matching across:
-    /// <list type="bullet">
-    ///   <item><description>Log message text</description></item>
-    ///   <item><description>Category names</description></item>
-    ///   <item><description>Exception text (if present)</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// This test verifies that only entries containing the search term are visible
-    /// after filtering is applied.
-    /// </para>
-    /// </remarks>
+    // ============================================================
+    // Tests - Log Management - Filtering by Search Text
+    // ============================================================
+
     [Fact]
     public void LogFilter_BySearchText_Works()
     {
         var vm = CreateVm(
             out var entries,
+            out _,
             out _,
             out _,
             out _,
@@ -520,81 +545,36 @@ public sealed class ShellViewModelTests
         Assert.Contains("world", only.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ============================================================
-    // Tests: Theming Coordination
-    // ============================================================
-
-    /// <summary>
-    /// Verifies that setting <see cref="ShellViewModel.IsDarkMode"/> coordinates theme changes
-    /// across both the theme service (Material Design) and theme-aware components (OxyPlot charts).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The shell view model acts as the single coordination point for theme changes,
-    /// ensuring both systems update together:
-    /// <list type="bullet">
-    ///   <item><description><see cref="IThemeService.SetDark"/> updates Material Design UI components</description></item>
-    ///   <item><description><see cref="IThemeAware.SetTheme"/> updates OxyPlot chart colors</description></item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// This test verifies both calls occur when the IsDarkMode property changes, maintaining
-    /// consistent theming across the entire application.
-    /// </para>
-    /// </remarks>
     [Fact]
-    public void IsDarkMode_Setter_CallsThemeService_AndThemeAware()
+    public void LogFilter_SearchMatches_Category_AndExceptionText()
     {
         var vm = CreateVm(
+            out var entries,
             out _,
             out _,
             out _,
-            out var themeMock,
-            out var themeAwareMock);
+            out _,
+            out _);
 
-        // Clear constructor invocations to test only the property setter
-        themeMock.Invocations.Clear();
-        themeAwareMock.Invocations.Clear();
+        entries.Add(MakeLog(DateTimeOffset.UtcNow, LogLevel.Information, "hello world", category: "Alpha"));
+        entries.Add(MakeLog(DateTimeOffset.UtcNow.AddSeconds(-1), LogLevel.Error, "boom", category: "Beta", ex: new InvalidOperationException("kaboom")));
 
-        vm.IsDarkMode = false;
+        // Search by exception text
+        vm.LogSearchText = "kaboom";
+        vm.LogEntriesView.Refresh();
 
-        themeMock.Verify(t => t.SetDark(false), Times.Once);
-        themeAwareMock.Verify(t => t.SetTheme(false), Times.Once);
+        Assert.Single(vm.LogEntriesView.Cast<LogEntry>());
+
+        var only = vm.LogEntriesView.Cast<LogEntry>().Single();
+        Assert.Equal(LogLevel.Error, only.Level);
+        Assert.NotNull(only.Exception);
+        Assert.Contains("kaboom", only.Exception!.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        // Search by category
+        vm.LogSearchText = "alpha";
+        vm.LogEntriesView.Refresh();
+
+        Assert.Single(vm.LogEntriesView.Cast<LogEntry>());
+        Assert.Equal("Alpha", vm.LogEntriesView.Cast<LogEntry>().Single().Category);
     }
-
-    // ============================================================
-    // Test Data Helpers
-    // ============================================================
-
-    /// <summary>
-    /// Creates a test <see cref="LogEntry"/> with specified parameters.
-    /// </summary>
-    /// <param name="ts">The timestamp for the log entry.</param>
-    /// <param name="level">The log level (severity).</param>
-    /// <param name="message">The log message text.</param>
-    /// <param name="category">The logger category name (default: "Test").</param>
-    /// <param name="ex">An optional exception associated with the log entry.</param>
-    /// <returns>
-    /// A <see cref="LogEntry"/> instance configured with the specified parameters.
-    /// </returns>
-    /// <remarks>
-    /// This helper simplifies test data creation by providing sensible defaults and
-    /// a fluent interface for creating log entries with only the parameters relevant
-    /// to each test.
-    /// </remarks>
-    private static LogEntry MakeLog(
-        DateTimeOffset ts,
-        LogLevel level,
-        string message,
-        string category = "Test",
-        Exception? ex = null)
-        => new(
-            Timestamp: ts,
-            Level: level,
-            Category: category,
-            EventId: new EventId(0, null),
-            Message: message,
-            Exception: ex,
-            Properties: Array.Empty<KeyValuePair<string, object?>>(),
-            Scopes: Array.Empty<KeyValuePair<string, object?>>());
 }
