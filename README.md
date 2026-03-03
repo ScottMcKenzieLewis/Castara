@@ -28,6 +28,15 @@ This software is provided as an **educational tool** for learning about cast iro
 **By using this software, you acknowledge that the authors bear no responsibility for any decisions made based on its output.**
 
 ---
+## Screenshot
+<img width="1484" height="962" alt="image" src="https://github.com/user-attachments/assets/3248b7be-8fd4-4ac3-b256-01769b909433" />
+
+## Demo
+
+
+https://github.com/user-attachments/assets/6c808a1a-e29e-44f1-a407-fa73e9d0b984
+
+
 
 ## Features
 
