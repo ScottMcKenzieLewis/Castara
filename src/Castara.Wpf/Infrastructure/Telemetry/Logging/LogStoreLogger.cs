@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace Castara.Wpf.Telemetry.Logging;
+namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
 
 /// <summary>
 /// Custom <see cref="ILogger"/> implementation that writes log entries to an <see cref="ILogStore"/>.

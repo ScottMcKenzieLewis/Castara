@@ -8,10 +8,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
+using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
-using Castara.Wpf.Telemetry.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Castara.Wpf.ViewModels;

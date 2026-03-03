@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace Castara.Wpf.Telemetry.Logging;
+namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
 
 /// <summary>
 /// Extends <see cref="ILogStore"/> with an observable collection suitable for WPF data binding.

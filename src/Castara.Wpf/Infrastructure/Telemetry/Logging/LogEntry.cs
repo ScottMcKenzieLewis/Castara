@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
-namespace Castara.Wpf.Telemetry.Logging;
+namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
 
 /// <summary>
 /// Represents a structured log entry containing timestamp, level, category, message, and associated metadata.
