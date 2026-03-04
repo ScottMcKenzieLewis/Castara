@@ -96,9 +96,7 @@ Each flag includes:
 - [ ] **Profile Persistence** - Allow saving of section profiles and composition data to database for historical tracking and analysis
 - [ ] **Additional Telemetry** - Incorporate domain logging and events
 - [ ] **Expand Test Coverage** - Always
-- [ ] **Add support for multiple Casting Profiles**.  
-  The current implementation assumes a default profile of **Green Sand Gray Iron**.  
-  Future profiles may include other casting processes and iron types (e.g., Ductile Iron, Resin Sand Gray Iron, etc.), each with their own parameter ranges and estimation logic.
+- [ ] **Add support for multiple Casting Profiles** - The current implementation assumes a default profile of **Green Sand Gray Iron**. Future profiles may include other casting processes and iron types (e.g., Ductile Iron, Resin Sand Gray Iron, etc.), each with their own parameter ranges and estimation logic.
 
 ## Contributing
 
