@@ -23,6 +23,8 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ListBox.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.ScrollViewer.xaml" />
 
+                <ResourceDictionary Source="pack://application:,,,/Castara.Wpf;component/Styles/LogViewerStyles.xaml"/>
+
                 <!-- Your bundled theme (this sets initial base + primary/secondary) -->
                 <materialDesign:BundledTheme BaseTheme="Dark"
                                              PrimaryColor="BlueGrey"

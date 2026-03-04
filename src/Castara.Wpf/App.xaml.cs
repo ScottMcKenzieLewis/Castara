@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Castara.Domain.Estimation.Services;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
+using Castara.Wpf.Services.Clipboard;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
 using Castara.Wpf.ViewModels;
@@ -230,11 +231,13 @@ public partial class App : Application
         // --------------------
         services.AddSingleton<IStatusService, StatusService>();
         services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IClipboardService, WpfClipboardService>();
 
         // --------------------
         // View Models
         // --------------------
         // Singleton ensures one long-lived instance with state preservation
+        services.AddSingleton<LogViewerViewModel>();
         services.AddSingleton<CalculationsViewModel>();
         services.AddSingleton<ShellViewModel>();
 
