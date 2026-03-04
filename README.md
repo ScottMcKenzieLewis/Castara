@@ -4,39 +4,12 @@
 
 A modern WPF desktop application for estimating mechanical properties of gray cast iron based on chemical composition and casting section characteristics. Built with .NET 8 and Material Design, Castara provides foundry engineers and metallurgists with an intuitive interface for rapid property predictions with visual feedback.
 
----
-
-## ⚠️ Important Disclaimer
-
-**FOR EDUCATIONAL AND REFERENCE PURPOSES ONLY**
-
-This software is provided as an **educational tool** for learning about cast iron metallurgy and property estimation. It is **NOT intended for production use** or critical engineering decisions.
-
-**Key Limitations:**
-- Estimates are based on simplified empirical models
-- Does not account for all metallurgical variables
-- Cannot replace laboratory testing and analysis
-- Should not be used for safety-critical applications
-
-**For Production Use:**
-- Consult qualified metallurgical engineers
-- Perform appropriate laboratory testing
-- Follow industry standards (ASTM, ISO, etc.)
-- Validate all calculations independently
-- Conduct physical property verification
-
-**By using this software, you acknowledge that the authors bear no responsibility for any decisions made based on its output.**
-
----
 ## Screenshot
 <img width="1484" height="962" alt="image" src="https://github.com/user-attachments/assets/3248b7be-8fd4-4ac3-b256-01769b909433" />
 
 ## Demo
 
-
 https://github.com/user-attachments/assets/6c808a1a-e29e-44f1-a407-fa73e9d0b984
-
-
 
 ## Features
 
