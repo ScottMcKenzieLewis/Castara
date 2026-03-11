@@ -2,8 +2,11 @@
 using Castara.Application.Abstractions.Repositories;
 using Castara.Application.DTOs;
 using Castara.Domain.Casting;
+using Castara.Domain.Exceptions;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+
+namespace Castara.Application.Repositories;
 
 public sealed class JsonCastingProfileRepository : ICastingProfileRespository
 {
@@ -19,8 +22,8 @@ public sealed class JsonCastingProfileRepository : ICastingProfileRespository
     IMapper mapper)
     {
         ArgumentNullException.ThrowIfNull(options.Value.FilePath);
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _filePath = options.Value.FilePath;
-        _mapper = mapper;
     }
 
     public async Task<IReadOnlyList<CastingProfileDefinition>> GetAllAsync(
@@ -40,10 +43,17 @@ public sealed class JsonCastingProfileRepository : ICastingProfileRespository
 
         if (config is null)
         {
-            throw new InvalidOperationException("Could not load casting profiles.");
+            throw new DomainException("Could not load casting profiles.");
         }
 
-        _cachedProfiles = _mapper.Map<List<CastingProfileDefinition>>(config.Profiles);
+        var profiles = _mapper.Map<List<CastingProfileDefinition>>(config.Profiles);
+
+        foreach (var profile in profiles)
+        {
+            profile.ValidateRanges();
+        }
+
+        _cachedProfiles = profiles;
         return _cachedProfiles;
     }
 
@@ -51,6 +61,8 @@ public sealed class JsonCastingProfileRepository : ICastingProfileRespository
         string id,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
         var profiles = await GetAllAsync(cancellationToken);
 
         return profiles.FirstOrDefault(x =>
