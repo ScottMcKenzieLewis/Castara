@@ -1,0 +1,70 @@
+{
+  "profiles": [
+    {
+      "id": "green-sand-gray-iron",
+      "displayName": "Green Sand - Gray Iron",
+      "processFamily": "GreenSand",
+      "ironType": "GrayIron",
+      "defaults": {
+        "sectionThicknessIn": 1.0
+      },
+      "ranges": {
+        "carbonMin": 3.1,
+        "carbonMax": 3.7,
+        "siliconMin": 1.8,
+        "siliconMax": 2.8,
+        "manganeseMin": 0.5,
+        "manganeseMax": 1.0,
+        "phosphorusMin": 0.0,
+        "phosphorusMax": 0.12,
+        "sulfurMin": 0.0,
+        "sulfurMax": 0.15
+      },
+      "targets": {
+        "preferredCarbonEquivalentMin": 3.9,
+        "preferredCarbonEquivalentMax": 4.3,
+        "graphitizationBias": 1.0,
+        "coolingSeverityFactor": 1.0
+      },
+      "riskThresholds": {
+        "chillRiskCeiling": 3.7,
+        "shrinkageRiskFloor": 4.4,
+        "hardnessWarningMinBhn": 170,
+        "hardnessWarningMaxBhn": 260
+      }
+    },
+    {
+      "id": "resin-sand-gray-iron",
+      "displayName": "Resin Sand - Gray Iron",
+      "processFamily": "ResinSand",
+      "ironType": "GrayIron",
+      "defaults": {
+        "sectionThicknessIn": 1.0
+      },
+      "ranges": {
+        "carbonMin": 3.0,
+        "carbonMax": 3.6,
+        "siliconMin": 1.7,
+        "siliconMax": 2.6,
+        "manganeseMin": 0.5,
+        "manganeseMax": 1.0,
+        "phosphorusMin": 0.0,
+        "phosphorusMax": 0.10,
+        "sulfurMin": 0.0,
+        "sulfurMax": 0.12
+      },
+      "targets": {
+        "preferredCarbonEquivalentMin": 3.8,
+        "preferredCarbonEquivalentMax": 4.2,
+        "graphitizationBias": 0.95,
+        "coolingSeverityFactor": 1.05
+      },
+      "riskThresholds": {
+        "chillRiskCeiling": 3.65,
+        "shrinkageRiskFloor": 4.35,
+        "hardnessWarningMinBhn": 180,
+        "hardnessWarningMaxBhn": 270
+      }
+    }
+  ]
+}

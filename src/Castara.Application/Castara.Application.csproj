@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Castara.Domain\Castara.Domain.csproj" />
+    <ProjectReference Include="..\Castara.Infrastructure\Castara.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

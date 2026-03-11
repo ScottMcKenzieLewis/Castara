@@ -1,8 +1,7 @@
-﻿using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Threading;
+using Castara.Application.Mapping;
 using Castara.Domain.Estimation.Services;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
@@ -46,7 +45,7 @@ namespace Castara.Wpf;
 /// and debugging.
 /// </para>
 /// </remarks>
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     /// <summary>
     /// The generic host that provides dependency injection, logging, and lifecycle management.
@@ -246,6 +245,8 @@ public partial class App : Application
 
         // Register all unit-aware components for unit related calculations
         services.AddSingleton<IUnitAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
+
+        services.AddAutoMapper(cfg => { }, typeof(CastingProfileMappingProfile).Assembly);
 
         // --------------------
         // Windows / Views

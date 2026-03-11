@@ -4,7 +4,7 @@ using Castara.Infrastructure.Persistence;
 using Castara.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Castara.Infrastructure.Repositories;
+namespace Castara.Application.Repositories;
 
 public sealed class CompositionProfileRepository : ICompositionProfileRepository
 {

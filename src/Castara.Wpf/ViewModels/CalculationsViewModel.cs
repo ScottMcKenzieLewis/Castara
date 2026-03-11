@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
-using Castara.Domain.Composition;
+﻿using Castara.Domain.Composition;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
@@ -19,6 +13,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace Castara.Wpf.ViewModels;
 
@@ -64,7 +65,7 @@ namespace Castara.Wpf.ViewModels;
 /// reactively as inputs change. Gauge values are cached to survive theme switches without recalculation.
 /// </para>
 /// </remarks>
-public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware, IUnitAware, IDataErrorInfo
+public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware, IUnitAware, ICastingProfileAware, IDataErrorInfo
 {
     // ============================================================
     // Constants - Green Sand Gray Iron Defaults
@@ -808,6 +809,22 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
             OnPropertyChanged(nameof(CoolingRateUnitSuffix));
             OnPropertyChanged(nameof(ThicknessLabel));
             OnPropertyChanged(nameof(CoolingRateLabel));
+        }
+    }
+
+    public void SetCastingProfileOption(CastingProfileOption castingProfileOption) => SelectedCastingProfile = castingProfileOption;
+
+    private CastingProfileOption? _selectedCastingProfile;
+
+    public CastingProfileOption? SelectedCastingProfile
+    {
+        get => _selectedCastingProfile;
+        set
+        {
+            if (Equals(_selectedCastingProfile, value)) return;
+            _selectedCastingProfile = value;
+            OnPropertyChanged();
+            Calculate();
         }
     }
 
