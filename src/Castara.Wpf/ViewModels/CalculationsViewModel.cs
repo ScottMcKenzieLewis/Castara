@@ -1,4 +1,5 @@
-﻿using Castara.Domain.Composition;
+﻿using Castara.Domain.Casting;
+using Castara.Domain.Composition;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
@@ -812,19 +813,60 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
         }
     }
 
-    public void SetCastingProfileOption(CastingProfileOption castingProfileOption) => SelectedCastingProfile = castingProfileOption;
+    private CastingProfileDefinition? _selectedCastingProfile;
 
-    private CastingProfileOption? _selectedCastingProfile;
-
-    public CastingProfileOption? SelectedCastingProfile
+    public CastingProfileDefinition? SelectedCastingProfile
     {
         get => _selectedCastingProfile;
-        set
+        private set
         {
-            if (Equals(_selectedCastingProfile, value)) return;
+            if (Equals(_selectedCastingProfile, value))
+                return;
+
             _selectedCastingProfile = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedCastingProfileDisplayName));
+        }
+    }
+
+    public string SelectedCastingProfileDisplayName
+        => SelectedCastingProfile?.DisplayName ?? "Green Sand Gray Iron";
+
+    public void SetCastingProfile(CastingProfileDefinition profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        SelectedCastingProfile = profile;
+
+        ApplyCastingProfile(profile);
+    }
+
+    private void ApplyCastingProfile(CastingProfileDefinition profile)
+    {
+        // For first pass:
+        // 1. Apply default section values from the profile
+        // 2. Rebuild validation fields if profile-specific ranges are to be honored
+        // 3. Recalculate if desired
+
+        ThicknessValue = profile.DefaultSectionThicknessMm; 
+
+        // Keep cooling rate default as-is for now unless later profile config includes it.
+        // CoolingRateValue = CoolingRateValue;
+
+        RebuildUnitSensitiveFieldsAndReseed();
+
+        // Eventually rebuild chemistry validators from profile ranges too.
+        // For now, calculation can still run with existing domain constraints.
+
+        if (CanCalculate())
+        {
             Calculate();
+        }
+        else
+        {
+            Result = null;
+            UpdateGaugeModels(false, 0, 0, 0);
+            _status.Set(AppStatusLevel.Ok, "Profile changed", profile.DisplayName);
         }
     }
 

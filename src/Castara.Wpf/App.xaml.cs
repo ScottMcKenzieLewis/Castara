@@ -1,7 +1,6 @@
-﻿using System.Diagnostics;
-using System.Windows;
-using System.Windows.Threading;
+﻿using Castara.Application.Abstractions.Repositories;
 using Castara.Application.Mapping;
+using Castara.Application.Repositories;
 using Castara.Domain.Estimation.Services;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
@@ -12,6 +11,11 @@ using Castara.Wpf.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.Versioning;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace Castara.Wpf;
 
@@ -76,7 +80,7 @@ public partial class App : System.Windows.Application
     /// from the moment the application starts.
     /// </para>
     /// </remarks>
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -108,7 +112,7 @@ public partial class App : System.Windows.Application
         HookWpfBindingErrorsToLogs(_host.Services);
 
         // Start the host (activates any hosted services)
-        _host.Start();
+        await _host.StartAsync();
 
         // Create and show main window through dependency injection
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
@@ -231,6 +235,19 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IStatusService, StatusService>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IClipboardService, WpfClipboardService>();
+        var profilesPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "configuration",
+            "casting-profiles.json");
+
+        services.Configure<CastingProfileRepositoryOptions>(options =>
+        {
+            options.FilePath = profilesPath;
+        });
+
+        services.AddAutoMapper(cfg => { }, typeof(CastingProfileMappingProfile).Assembly);
+
+        services.AddSingleton<ICastingProfileRepository, JsonCastingProfileRepository>();
 
         // --------------------
         // View Models
@@ -245,6 +262,8 @@ public partial class App : System.Windows.Application
 
         // Register all unit-aware components for unit related calculations
         services.AddSingleton<IUnitAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
+
+        services.AddSingleton<ICastingProfileAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
 
         services.AddAutoMapper(cfg => { }, typeof(CastingProfileMappingProfile).Assembly);
 

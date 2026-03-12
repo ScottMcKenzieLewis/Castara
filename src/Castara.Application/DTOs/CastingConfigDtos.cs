@@ -142,16 +142,16 @@ public sealed class CastingProfileConfig
 public sealed class CastingDefaultsConfig
 {
     /// <summary>
-    /// Gets or initializes the default section thickness in inches.
+    /// Gets or initializes the default section thickness in millimeters.
     /// </summary>
     /// <value>
-    /// The typical wall thickness for this casting profile, in inches. Default is 0.
+    /// The typical wall thickness for this casting profile, in millimeters. Default is 0.
     /// </value>
     /// <remarks>
     /// Represents a characteristic section thickness for this casting process.
     /// Used to pre-populate the thickness input field when this profile is selected.
     /// </remarks>
-    public double SectionThicknessIn { get; init; }
+    public double SectionThicknessMm { get; init; }
 }
 
 /// <summary>

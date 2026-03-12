@@ -4,6 +4,7 @@ using Castara.Application.DTOs;
 using Castara.Application.Mapping;
 using Castara.Application.Repositories;
 using Castara.Domain.Exceptions;
+using Castara.Infrastructure.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -26,15 +27,7 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
 
         Directory.CreateDirectory(_tempDirectory);
 
-        var mapperConfig = new MapperConfiguration(
-            cfg =>
-            {
-                cfg.AddProfile<CastingProfileMappingProfile>();
-            },
-            NullLoggerFactory.Instance);
-
-        mapperConfig.AssertConfigurationIsValid();
-        _mapper = mapperConfig.CreateMapper();
+        _mapper = TestMapperFactory.Create();
     }
 
     [Fact]
@@ -56,7 +49,7 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
         profile.DisplayName.Should().Be("Green Sand Gray Iron - Class 30");
         profile.ProcessFamily.Should().Be("GreenSand");
         profile.IronType.Should().Be("Gray");
-        profile.DefaultSectionThicknessIn.Should().Be(1.0);
+        profile.DefaultSectionThicknessMm.Should().Be(25.4);
         profile.CarbonMin.Should().Be(3.2);
         profile.CarbonMax.Should().Be(3.6);
         profile.SiliconMin.Should().Be(1.8);
@@ -228,7 +221,7 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
               "ProcessFamily": "GreenSand",
               "IronType": "Gray",
               "Defaults": {
-                "SectionThicknessIn": 1.0
+                "SectionThicknessMm": 25.4
               },
               "Ranges": {
                 "CarbonMin": 3.2,
@@ -269,7 +262,7 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
               "ProcessFamily": "GreenSand",
               "IronType": "Gray",
               "Defaults": {
-                "SectionThicknessIn": 1.0
+                "SectionThicknessMm": 25.4
               },
               "Ranges": {
                 "CarbonMin": 3.7,
@@ -310,7 +303,7 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
               "ProcessFamily": "NoBake",
               "IronType": "Gray",
               "Defaults": {
-                "SectionThicknessIn": 0.75
+                "SectionThicknessmm": 25.4
               },
               "Ranges": {
                 "CarbonMin": 3.1,

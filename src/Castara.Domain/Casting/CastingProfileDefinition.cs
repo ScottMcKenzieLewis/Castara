@@ -50,9 +50,10 @@ namespace Castara.Domain.Casting;
 /// The type of cast iron (e.g., "Gray", "Ductile", "Malleable", "Compacted").
 /// Determines applicable metallurgical models and property calculations.
 /// </param>
-/// <param name="DefaultSectionThicknessIn">
-/// Default section thickness in inches for this casting profile.
+/// <param name="DefaultSectionThicknessMm">
+/// Default section thickness in millimeters for this casting profile.
 /// Represents typical wall thickness for this process/application.
+/// Stored in canonical SI units (mm) for consistency with domain calculations.
 /// </param>
 /// <param name="CarbonMin">
 /// Minimum allowable carbon content in weight percent (wt%).
@@ -139,7 +140,7 @@ public sealed record CastingProfileDefinition(
     string DisplayName,
     string ProcessFamily,
     string IronType,
-    double DefaultSectionThicknessIn,
+    double DefaultSectionThicknessMm,
     double CarbonMin,
     double CarbonMax,
     double SiliconMin,
@@ -196,8 +197,8 @@ public sealed record CastingProfileDefinition(
         if (HardnessWarningMinBhn > HardnessWarningMaxBhn)
             throw new DomainException($"Profile '{Id}': HardnessWarningMinBhn ({HardnessWarningMinBhn}) > HardnessWarningMaxBhn ({HardnessWarningMaxBhn})");
 
-        if (DefaultSectionThicknessIn <= 0)
-            throw new DomainException($"Profile '{Id}': DefaultSectionThicknessIn ({DefaultSectionThicknessIn}) must be > 0");
+        if (DefaultSectionThicknessMm <= 0)
+            throw new DomainException($"Profile '{Id}': DefaultSectionThicknessMm ({DefaultSectionThicknessMm}) must be > 0");
 
         if (CoolingSeverityFactor < 0)
             throw new DomainException($"Profile '{Id}': CoolingSeverityFactor ({CoolingSeverityFactor}) must be >= 0");

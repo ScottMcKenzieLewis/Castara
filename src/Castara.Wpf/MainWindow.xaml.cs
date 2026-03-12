@@ -1,8 +1,8 @@
-﻿using Castara.Wpf.ViewModels;
-using MaterialDesignThemes.Wpf;
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Input;
+using Castara.Wpf.ViewModels;
+using MaterialDesignThemes.Wpf;
 
 namespace Castara.Wpf;
 
@@ -17,12 +17,15 @@ namespace Castara.Wpf;
 ///   <item><description>Double-click to maximize/restore</description></item>
 ///   <item><description>Custom minimize, maximize/restore, and close buttons</description></item>
 ///   <item><description>Dynamic icon updates based on window state</description></item>
+///   <item><description>Asynchronous shell initialization on first load</description></item>
 /// </list>
 /// The custom chrome allows for Material Design theming while maintaining standard
 /// Windows window management behavior.
 /// </remarks>
 public partial class MainWindow : Window
 {
+    private readonly ShellViewModel _shellViewModel;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class with the specified view model.
     /// </summary>
@@ -32,15 +35,35 @@ public partial class MainWindow : Window
     /// <remarks>
     /// The view model is injected via dependency injection and set as the window's DataContext
     /// to enable data binding. The maximize/restore icon is initialized to match the current
-    /// window state.
+    /// window state. Shell-level asynchronous initialization is deferred until the window is loaded.
     /// </remarks>
     public MainWindow(ShellViewModel vm)
     {
+        _shellViewModel = vm ?? throw new ArgumentNullException(nameof(vm));
+
         InitializeComponent();
-        DataContext = vm;
+
+        DataContext = _shellViewModel;
+
+        Loaded += MainWindow_Loaded;
 
         // Ensure icon matches initial state
         UpdateMaxRestoreIcon();
+    }
+
+    /// <summary>
+    /// Handles the window loaded event and performs one-time asynchronous shell initialization.
+    /// </summary>
+    /// <param name="sender">The window that raised the event.</param>
+    /// <param name="e">The routed event arguments.</param>
+    /// <remarks>
+    /// This loads shell-level data such as casting profiles after the visual tree is ready,
+    /// avoiding asynchronous work in the constructor.
+    /// </remarks>
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindow_Loaded;
+        await _shellViewModel.InitializeAsync();
     }
 
     /// <summary>
@@ -60,8 +83,7 @@ public partial class MainWindow : Window
     /// </list>
     /// </para>
     /// <para>
-    /// The drag functionality is disabled when the window is maximized to match
-    /// standard Windows behavior.
+    /// Dragging is only attempted for a pressed left mouse button.
     /// </para>
     /// </remarks>
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -72,9 +94,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.ButtonState == MouseButtonState.Pressed)
+        if (e.ChangedButton != MouseButton.Left || e.ButtonState != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        try
         {
             DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            // Ignore transient drag exceptions caused by edge-case mouse/window timing.
         }
     }
 
@@ -146,7 +177,7 @@ public partial class MainWindow : Window
     /// <param name="e">The event arguments.</param>
     /// <remarks>
     /// This override ensures the button icon is updated when the window state changes
-    /// through any mechanism (keyboard shortcuts, taskbar, etc.), not just button clicks.
+    /// through any mechanism (keyboard shortcuts, taskbar, snapping, etc.), not just button clicks.
     /// </remarks>
     protected override void OnStateChanged(EventArgs e)
     {
@@ -171,7 +202,10 @@ public partial class MainWindow : Window
     /// </remarks>
     private void UpdateMaxRestoreIcon()
     {
-        if (MaxRestoreIcon is null) return;
+        if (MaxRestoreIcon is null)
+        {
+            return;
+        }
 
         MaxRestoreIcon.Kind = WindowState == WindowState.Maximized
             ? PackIconKind.WindowRestore

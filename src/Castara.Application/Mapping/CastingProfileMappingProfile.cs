@@ -21,8 +21,8 @@ public sealed class CastingProfileMappingProfile : Profile
                 opt => opt.MapFrom(src => src.ProcessFamily))
             .ForCtorParam(nameof(CastingProfileDefinition.IronType),
                 opt => opt.MapFrom(src => src.IronType))
-            .ForCtorParam(nameof(CastingProfileDefinition.DefaultSectionThicknessIn),
-                opt => opt.MapFrom(src => src.Defaults.SectionThicknessIn))
+            .ForCtorParam(nameof(CastingProfileDefinition.DefaultSectionThicknessMm),
+                opt => opt.MapFrom(src => src.Defaults.SectionThicknessMm))
             .ForCtorParam(nameof(CastingProfileDefinition.CarbonMin),
                 opt => opt.MapFrom(src => src.Ranges.CarbonMin))
             .ForCtorParam(nameof(CastingProfileDefinition.CarbonMax),
