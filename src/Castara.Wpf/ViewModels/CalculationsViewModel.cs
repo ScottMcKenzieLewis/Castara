@@ -3,6 +3,8 @@ using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Validation;
+using Castara.Wpf.Diagnostics.CrashReport;
+using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
 using Castara.Wpf.Infrastructure.Components;
@@ -55,6 +57,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
 
     private readonly IStatusService _status;
     private readonly ICastIronEstimator _estimator;
+    private readonly IApplicationStateSnapshotService _applicationStateSnapshotService;
     private readonly ILogger<CalculationsViewModel> _log;
 
     // ============================================================
@@ -118,10 +121,12 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     public CalculationsViewModel(
         IStatusService status,
         ICastIronEstimator estimator,
+        IApplicationStateSnapshotService applicationStateSnapshotService,
         ILogger<CalculationsViewModel>? log = null)
     {
         _status = status ?? throw new ArgumentNullException(nameof(status));
         _estimator = estimator ?? throw new ArgumentNullException(nameof(estimator));
+        _applicationStateSnapshotService = applicationStateSnapshotService ?? throw new ArgumentNullException(nameof(applicationStateSnapshotService));
         _log = log ?? NullLogger<CalculationsViewModel>.Instance;
 
         CalculateCommand = new RelayCommand(Calculate, CanCalculate);
@@ -540,6 +545,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
                 return;
 
             _isDarkTheme = value;
+            _applicationStateSnapshotService.SetTheme(value ? "Dark" : "Light");
             OnPropertyChanged();
 
             RebuildPlotsForTheme();
@@ -753,6 +759,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
 
         ApplyDefaultNumerics();
         SeedAllTextFromNumerics();
+        PublishSnapshotFields();
 
         if (SelectedCastingProfile is null)
         {
@@ -811,6 +818,8 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
             if (refreshComposition)
                 UpdateCompositionPlot();
         }
+
+        PublishSnapshotFields();
 
         OnPropertyChanged(propertyName);
         OnPropertyChanged(nameof(IsValid));
@@ -1238,4 +1247,16 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
     /// <param name="name">The name of the property that changed. Automatically provided by the compiler when called from a property setter.</param>
     private void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private void PublishSnapshotFields()
+    {
+        _applicationStateSnapshotService.SetField("Carbon", CarbonText);
+        _applicationStateSnapshotService.SetField("Silicon", SiliconText);
+        _applicationStateSnapshotService.SetField("Manganese", ManganeseText);
+        _applicationStateSnapshotService.SetField("Phosphorus", PhosphorusText);
+        _applicationStateSnapshotService.SetField("Sulfur", SulfurText);
+        _applicationStateSnapshotService.SetField("Thickness", ThicknessText);
+        _applicationStateSnapshotService.SetField("CoolingRate", CoolingRateText);
+        _applicationStateSnapshotService.SetField("UnitSystem", _unitSystem.ToString());
+    }
 }

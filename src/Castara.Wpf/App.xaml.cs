@@ -3,6 +3,8 @@ using Castara.Application.Mapping;
 using Castara.Application.Repositories;
 using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Services.Strategies;
+using Castara.Wpf.Diagnostics.CrashReport;
+using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Services.Clipboard;
@@ -276,6 +278,15 @@ public partial class App : System.Windows.Application
         // Windows / Views
         // --------------------
         services.AddTransient<MainWindow>();
+
+        // --------------------
+        // Crash Report Diagnostics
+        // --------------------
+        services.AddSingleton<IApplicationStateSnapshotService, ApplicationStateSnapshotService>();
+        services.AddSingleton<ICrashReportBuilder, CrashReportBuilder>();
+        services.AddSingleton<ICrashReportWriter, JsonCrashReportWriter>();
+        services.AddSingleton<ICrashDialogService, CrashDialogService>();
+        services.AddSingleton<ICrashReportService, CrashReportService>();
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 ﻿using Castara.Application.Abstractions.Repositories;
 using Castara.Domain.Estimation.Services;
+using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Models;
@@ -21,12 +22,14 @@ namespace Castara.Wpf.Tests.Common;
 public sealed class TestContext
 {
     public Mock<IStatusService> Status { get; } = new();
+    
     public Mock<ICastIronEstimator> Estimator { get; } = new();
 
     public ObservableCollection<LogEntry> LogEntriesBacking { get; } = new();
     public ReadOnlyObservableCollection<LogEntry> LogEntries { get; }
 
     public Mock<IObservableLogStore> LogStore { get; } = new();
+    
     public Mock<IClipboardService> Clipboard { get; } = new();
 
     public Mock<IThemeService> ThemeService { get; } = new();
@@ -34,6 +37,8 @@ public sealed class TestContext
     public Mock<IUnitAware> UnitAware { get; } = new();
     public Mock<ICastingProfileAware> CastingProfileAware { get; } = new();
     public Mock<ICastingProfileRepository> CastingProfileRepository { get; } = new();
+
+    public Mock<IApplicationStateSnapshotService> ApplicationStateSnapshotService { get; } = new();
 
     public TestContext()
     {
@@ -56,6 +61,7 @@ public sealed class TestContext
         return new CalculationsViewModel(
             Status.Object,
             Estimator.Object,
+            ApplicationStateSnapshotService.Object,
             NullLogger<CalculationsViewModel>.Instance);
     }
 
@@ -82,6 +88,7 @@ public sealed class TestContext
             UnitAware.Object,
             CastingProfileAware.Object,
             CastingProfileRepository.Object,
+            ApplicationStateSnapshotService.Object,
             CreateLogViewerViewModel(),
             NullLogger<ShellViewModel>.Instance);
     }

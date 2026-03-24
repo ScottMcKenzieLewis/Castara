@@ -1,6 +1,7 @@
 ﻿using Castara.Application.Abstractions.Repositories;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Exceptions;
+using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
@@ -29,6 +30,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     private readonly IUnitAware _unitAware;
     private readonly ICastingProfileAware _castingProfileAware;
     private readonly ICastingProfileRepository _castingProfileRepository;
+    private readonly IApplicationStateSnapshotService _applicationStateSnapshotService;
     private readonly ILogger<ShellViewModel> _logger;
 
     private bool _isDarkMode;
@@ -64,6 +66,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         IUnitAware unitAware,
         ICastingProfileAware castingProfileAware,
         ICastingProfileRepository castingProfileRepository,
+        IApplicationStateSnapshotService applicationStateSnapshotService,
         LogViewerViewModel logViewer,
         ILogger<ShellViewModel> logger)
     {
@@ -74,6 +77,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         _unitAware = unitAware ?? throw new ArgumentNullException(nameof(unitAware));
         _castingProfileAware = castingProfileAware ?? throw new ArgumentNullException(nameof(castingProfileAware));
         _castingProfileRepository = castingProfileRepository ?? throw new ArgumentNullException(nameof(castingProfileRepository));
+        _applicationStateSnapshotService = applicationStateSnapshotService ?? throw new ArgumentNullException(nameof(applicationStateSnapshotService));
         LogViewerViewModel = logViewer ?? throw new ArgumentNullException(nameof(logViewer));
         _logger = logger ?? NullLogger<ShellViewModel>.Instance;
 
@@ -106,6 +110,10 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         // Set the placeholder as the initial selection
         SelectedCastingProfileOption = CastingProfileOptions[0];
 
+        _applicationStateSnapshotService.SetActiveView(CurrentViewModel.GetType().Name);
+        _applicationStateSnapshotService.SetTheme(IsDarkMode ? "Dark" : "Light");
+        _applicationStateSnapshotService.SetSelectedCastingProfile(null);
+
         // Display initial status message
         _statusService.Set(AppStatusLevel.Ok, "Ready", "Select a casting profile");
     }
@@ -137,6 +145,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
                 return;
 
             _currentViewModel = value;
+            _applicationStateSnapshotService.SetActiveView(value?.GetType().Name);
             Notify(nameof(CurrentViewModel));
         }
     }
@@ -205,6 +214,9 @@ public sealed class ShellViewModel : INotifyPropertyChanged
                 return;
 
             _selectedCastingProfile = value;
+
+            _applicationStateSnapshotService.SetSelectedCastingProfile(
+                value?.DisplayName);
 
             // Notify dependent properties that derive from the selected profile
             Notify(nameof(SelectedCastingProfile));
