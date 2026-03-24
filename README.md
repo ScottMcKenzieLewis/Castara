@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/a326756b-e2e7-4335-81e8-a604c9eebeab
 
 ## Technology Stack
 
-- **.NET 8.0** - Latest LTS framework
+- **.NET 8.0** - LTS framework
 - **WPF** - Windows Presentation Foundation for rich desktop UI
 - **C# 12.0** - Modern language features including primary constructors and record types
 - **AutoMapper** - Object-to-object mapping for DTOs and domain models
