@@ -143,7 +143,7 @@
 
                         <!-- Message is allowed to be wider than the viewport -->
                         <DataGridTextColumn Header="Message"
-                                            Width="900"
+                                            Width="SizeToCells"
                                             Binding="{Binding Message}">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">

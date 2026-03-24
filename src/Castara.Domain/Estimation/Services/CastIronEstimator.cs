@@ -1,397 +1,195 @@
-﻿using Castara.Domain.Composition;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Estimation.Models.Outputs;
-using Castara.Domain.Estimation.Validation;
+using Castara.Domain.Estimation.Services.Strategies;
 
 namespace Castara.Domain.Estimation.Services;
 
 /// <summary>
-/// Provides metallurgical property estimation for cast iron based on chemical composition
-/// and section parameters using empirical models and industry-standard formulas.
-/// 
-/// References:
-/// - ASM Handbook Volume 1: Properties and Selection: Irons
-/// - Stefanescu, "Science and Engineering of Casting Solidification"
-/// - https://en.wikipedia.org/wiki/Equivalent_carbon_content
-/// - https://www.ispatguru.com/cast-irons-and-their-classification/
-///
-/// Note:
-/// Graphitization and hardness calculations are empirical
-/// engineering models derived from typical gray iron behavior.
+/// Default implementation of <see cref="ICastIronEstimator"/> that acts as a facade,
+/// delegating to the first registered strategy capable of handling the selected casting profile.
 /// </summary>
 /// <remarks>
-/// This estimator calculates carbon equivalent, graphitization potential, and hardness
-/// predictions while identifying potential risks in casting operations. The calculations
-/// are based on well-established metallurgical principles and casting research.
+/// <para>
+/// <strong>Architectural Role: Facade + Strategy Selection</strong>
+/// </para>
+/// <para>
+/// This class centralizes strategy selection so callers never need to branch on process family
+/// or iron type themselves. That keeps "which model applies?" as a domain concern instead of a
+/// UI concern. The application layer simply calls <c>Estimate(inputs, profile)</c> and the
+/// appropriate metallurgical model is automatically selected and executed.
+/// </para>
+/// <para>
+/// <strong>Strategy Resolution:</strong>
+/// </para>
+/// <para>
+/// Strategies are evaluated in registration order, and the first strategy where
+/// <see cref="ICastingEstimatorStrategy.CanHandle"/> returns <c>true</c> is selected.
+/// This allows for flexibility in strategy organization:
+/// <list type="bullet">
+///   <item><description>Specific strategies can be registered first (e.g., shell mold gray iron)</description></item>
+///   <item><description>General strategies can be registered last as fallbacks (e.g., all gray iron)</description></item>
+///   <item><description>Multiple iron types can coexist (gray iron strategy, ductile iron strategy, etc.)</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// <strong>Error Handling Philosophy:</strong>
+/// </para>
+/// <para>
+/// Failure to resolve a strategy is treated as a <strong>configuration/modeling error</strong> rather
+/// than a recoverable runtime condition. This is intentional: a selected profile without a compatible
+/// estimator means the application has been wired inconsistently. This indicates one of:
+/// <list type="bullet">
+///   <item><description>A profile was loaded that references an unsupported process family or iron type</description></item>
+///   <item><description>The required strategy implementation was not registered in dependency injection</description></item>
+///   <item><description>Strategy <c>CanHandle</c> logic doesn't match the profile definitions</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// Treating this as an exception forces immediate attention during development/deployment rather than
+/// allowing the application to run in an invalid state.
+/// </para>
+/// <para>
+/// <strong>Thread Safety:</strong> This implementation is thread-safe. The strategy collection is
+/// immutable after construction, and strategies themselves should be stateless and thread-safe.
+/// </para>
+/// <para>
+/// <strong>Example DI Registration:</strong>
+/// <code>
+/// // Register strategies in order (specific to general)
+/// services.AddSingleton&lt;ICastingEstimatorStrategy, ShellMoldGrayIronStrategy&gt;();
+/// services.AddSingleton&lt;ICastingEstimatorStrategy, GrayIronStrategy&gt;(); // Fallback
+/// services.AddSingleton&lt;ICastingEstimatorStrategy, DuctileIronStrategy&gt;();
+/// 
+/// // Register facade (receives all strategies via IEnumerable)
+/// services.AddSingleton&lt;ICastIronEstimator, CastIronEstimator&gt;();
+/// </code>
+/// </para>
 /// </remarks>
 public sealed class CastIronEstimator : ICastIronEstimator
 {
+    // ============================================================
+    // Fields
+    // ============================================================
+
     /// <summary>
-    /// Estimates cast iron properties including carbon equivalent, graphitization score,
-    /// hardness range, and operational risk flags.
+    /// Immutable collection of registered estimation strategies, evaluated in order.
+    /// </summary>
+    private readonly IReadOnlyList<ICastingEstimatorStrategy> _strategies;
+
+    // ============================================================
+    // Constructor
+    // ============================================================
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CastIronEstimator"/> class with
+    /// the specified collection of estimation strategies.
+    /// </summary>
+    /// <param name="strategies">
+    /// The collection of <see cref="ICastingEstimatorStrategy"/> implementations to use
+    /// for estimation. Strategies are evaluated in enumeration order, and the first
+    /// strategy that returns <c>true</c> from <see cref="ICastingEstimatorStrategy.CanHandle"/>
+    /// is selected.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="strategies"/> is null.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// The strategies collection is typically populated by dependency injection, which
+    /// registers all <see cref="ICastingEstimatorStrategy"/> implementations and injects
+    /// them as an <see cref="IEnumerable{T}"/>.
+    /// </para>
+    /// <para>
+    /// <strong>Empty Collection Handling:</strong> An empty strategies collection is allowed
+    /// but will cause all <see cref="Estimate"/> calls to throw <see cref="InvalidOperationException"/>
+    /// . This is acceptable because it indicates a configuration error that should be caught
+    /// during application startup or integration testing.
+    /// </para>
+    /// </remarks>
+    public CastIronEstimator(IEnumerable<ICastingEstimatorStrategy> strategies)
+    {
+        _strategies = strategies?.ToList()
+            ?? throw new ArgumentNullException(nameof(strategies));
+    }
+
+    // ============================================================
+    // Public Methods
+    // ============================================================
+
+    /// <summary>
+    /// Estimates cast iron mechanical properties by selecting and executing the appropriate
+    /// estimation strategy for the specified casting profile.
     /// </summary>
     /// <param name="inputs">
-    /// The input parameters containing chemical composition and section profile data.
+    /// The validated cast iron composition and section parameters to analyze.
+    /// Contains chemical composition (C, Si, Mn, P, S in wt%) and section characteristics
+    /// (thickness in mm, cooling rate in °C/s).
+    /// </param>
+    /// <param name="profile">
+    /// The casting profile definition that determines which estimation strategy to use
+    /// and provides process-specific tuning parameters, risk thresholds, and composition constraints.
     /// </param>
     /// <returns>
-    /// A <see cref="CastIronEstimate"/> containing all calculated properties and risk assessments.
+    /// A <see cref="CastIronEstimate"/> containing carbon equivalent, graphitization score,
+    /// hardness range, adjustment factors, and process-specific risk flags.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="inputs"/> or its composition/section properties are null.
+    /// Thrown when <paramref name="inputs"/> or <paramref name="profile"/> is null.
     /// </exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown when composition values or section parameters are outside valid ranges.
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when no registered strategy returns <c>true</c> from
+    /// <see cref="ICastingEstimatorStrategy.CanHandle"/> for the specified profile.
+    /// This indicates a configuration error where a profile exists without a compatible strategy.
     /// </exception>
-    public CastIronEstimate Estimate(CastIronInputs inputs)
+    /// <exception cref="Domain.Exceptions.DomainException">
+    /// Thrown when the selected strategy encounters domain rule violations during estimation
+    /// (invalid inputs, out-of-range values, non-physical results, etc.).
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// <strong>Strategy Selection Process:</strong>
+    /// <list type="number">
+    ///   <item><description>Iterate through registered strategies in order</description></item>
+    ///   <item><description>Call <see cref="ICastingEstimatorStrategy.CanHandle"/> on each strategy</description></item>
+    ///   <item><description>Select the first strategy that returns <c>true</c></description></item>
+    ///   <item><description>Delegate estimation to the selected strategy</description></item>
+    ///   <item><description>Return the strategy's result to the caller</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>No Strategy Match:</strong> If no strategy can handle the profile, an
+    /// <see cref="InvalidOperationException"/> is thrown with a detailed message including
+    /// the profile ID, iron type, and process family. This helps diagnose configuration issues
+    /// during development and deployment.
+    /// </para>
+    /// <para>
+    /// <strong>Performance Note:</strong> Strategy selection uses <see cref="Enumerable.FirstOrDefault{TSource}(IEnumerable{TSource}, Func{TSource, bool})"/>
+    /// with early exit, so only strategies before the matching one are evaluated. Register
+    /// more commonly used strategies first for optimal performance.
+    /// </para>
+    /// </remarks>
+    public CastIronEstimate Estimate(
+        CastIronInputs inputs,
+        CastingProfileDefinition profile)
     {
-        // Validate inputs param
-        ArgumentNullException.ThrowIfNull(inputs, nameof(inputs));
-        ArgumentNullException.ThrowIfNull(inputs.Composition, nameof(inputs.Composition));
-        ArgumentNullException.ThrowIfNull(inputs.Section, nameof(inputs.Section));
+        ArgumentNullException.ThrowIfNull(inputs);
+        ArgumentNullException.ThrowIfNull(profile);
 
-        // Validate chemical composition
-        var c = inputs.Composition;
-        CompositionGuards.Validate(c);
+        // Find the first strategy capable of handling this profile
+        var strategy = _strategies.FirstOrDefault(s => s.CanHandle(profile));
 
-        // Validate section parameters
-        var section = inputs.Section;
-        SectionGuards.Validate(section);
-
-        // Calculate carbon equivalent using standard formula
-        var ce = ComputeCarbonEquivalent(c);
-
-        // Convert continuous cooling rate to normalized factor
-        var coolingFactor = ComputeCoolingFactor(section.CoolingRateCPerSec);
-
-        // Calculate thickness influence on solidification
-        var thicknessFactor = ComputeThicknessFactor(section.ThicknessMm);
-
-        // Predict graphitization tendency (0-1 scale)
-        var graphScore = ComputeGraphitizationScore(ce, coolingFactor, thicknessFactor);
-
-        // Estimate hardness range in Brinell (HB)
-        var hardness = ComputeHardness(graphScore, coolingFactor, thicknessFactor);
-
-        // Generate risk flags for casting operations
-        var flags = new List<RiskFlag>
+        if (strategy is null)
         {
-            BuildChillRisk(graphScore, coolingFactor, thicknessFactor),
-            BuildShrinkRisk(ce, thicknessFactor, c.Manganese),
-            BuildMachinabilityRisk(graphScore)
-        };
+            throw new InvalidOperationException(
+                $"No casting estimator strategy is registered for profile '{profile.Id}' " +
+                $"({profile.IronType} / {profile.ProcessFamily}). " +
+                $"Ensure a compatible strategy is registered in dependency injection.");
+        }
 
-        return new CastIronEstimate(
-            CarbonEquivalent: Math.Round(ce, 3),
-            GraphitizationScore: Math.Round(graphScore, 3),
-            EstimatedHardness: hardness,
-            CoolingFactor: Math.Round(coolingFactor, 3),
-            ThicknessFactor: Math.Round(thicknessFactor, 3),
-            Flags: flags);
+        // Delegate to the selected strategy
+        return strategy.Estimate(inputs, profile);
     }
-
-    /// <summary>
-    /// Calculates the carbon equivalent (CE) using a standard cast iron formula:
-    /// CE = %C + (%Si + %P) / 3
-    ///
-    /// References:
-    /// - ASM Cast Iron Metallurgy
-    /// - https://www.ispatguru.com/cast-irons-and-their-classification/
-    /// - https://en.wikipedia.org/wiki/Equivalent_carbon_content
-    /// </summary>
-    /// <param name="c">The cast iron composition.</param>
-    /// <returns>The carbon equivalent value.</returns>
-    /// <remarks>
-    /// Carbon equivalent is a key indicator of cast iron's graphitization potential
-    /// and eutectic behavior. Values typically range from 3.0 to 4.5 for gray iron.
-    /// </remarks>
-    private static double ComputeCarbonEquivalent(CastIronComposition c)
-        => c.Carbon + (c.Silicon + c.Phosphorus) / 3.0;
-
-    /// <summary>
-    /// Converts a continuous cooling rate (°C/s) into a normalized cooling factor
-    /// using logarithmic interpolation to match empirical casting behavior.
-    /// 
-    /// References:
-    /// Cooling rate strongly influences graphite formation,
-    /// microstructure refinement, and hardness in cast iron:
-    ///
-    /// https://www.sciencedirect.com/... (cooling rate vs hardness)
-    /// ASM Cast Iron Metallurgy
-    /// </summary>
-    /// <param name="coolingRateCPerSec">The cooling rate in degrees Celsius per second.</param>
-    /// <returns>
-    /// A normalized cooling factor where:
-    /// <list type="bullet">
-    ///   <item><description>~-0.15 corresponds to slow cooling (~0.1 °C/s)</description></item>
-    ///   <item><description>0.00 corresponds to normal cooling (~1.0 °C/s)</description></item>
-    ///   <item><description>~+0.20 corresponds to fast cooling (~10 °C/s)</description></item>
-    /// </list>
-    /// </returns>
-    /// <remarks>
-    /// The logarithmic scale reflects the non-linear relationship between cooling rate
-    /// and microstructure formation. Input values are clamped between 0.02 and 50 °C/s
-    /// to prevent extreme values from distorting calculations.
-    /// </remarks>
-    private static double ComputeCoolingFactor(double coolingRateCPerSec)
-    {
-        // Guard rails: avoid log(0) and tame crazy inputs
-        var r = Math.Clamp(coolingRateCPerSec, 0.02, 50.0);
-
-        // Map log10(rate) into a factor via piecewise linear interpolation
-        // Anchors picked to match discrete enum behavior from previous model
-        const double rSlow = 0.1;   // °C/s -> slow cooling
-        const double fSlow = -0.15;
-
-        const double rNorm = 1.0;   // °C/s -> normal cooling
-        const double fNorm = 0.00;
-
-        const double rFast = 10.0;  // °C/s -> fast cooling
-        const double fFast = 0.20;
-
-        double x = Math.Log10(r);
-
-        double xSlow = Math.Log10(rSlow);
-        double xNorm = Math.Log10(rNorm);
-        double xFast = Math.Log10(rFast);
-
-        // Piecewise linear interpolation
-        if (x <= xNorm)
-            return Lerp(xSlow, fSlow, xNorm, fNorm, x);
-
-        return Lerp(xNorm, fNorm, xFast, fFast, x);
-    }
-
-    /// <summary>
-    /// Performs linear interpolation between two points.
-    /// </summary>
-    /// <param name="x0">The x-coordinate of the first point.</param>
-    /// <param name="y0">The y-coordinate of the first point.</param>
-    /// <param name="x1">The x-coordinate of the second point.</param>
-    /// <param name="y1">The y-coordinate of the second point.</param>
-    /// <param name="x">The x-coordinate at which to interpolate.</param>
-    /// <returns>The interpolated y-value at x.</returns>
-    private static double Lerp(double x0, double y0, double x1, double y1, double x)
-    {
-        if (Math.Abs(x1 - x0) < 1e-12) return y0;
-        var t = (x - x0) / (x1 - x0);
-        return y0 + t * (y1 - y0);
-    }
-
-    /// <summary>
-    /// Calculates the thickness factor representing the deviation from a reference
-    /// section thickness and its impact on solidification characteristics.
-    /// 
-    /// References:
-    /// Cooling rate is strongly influenced by section thickness:
-    ///
-    /// https://link.springer.com/... cooling rate vs thickness
-    /// Foundry solidification literature
-    /// </summary>
-    /// <param name="thicknessMm">The section thickness in millimeters.</param>
-    /// <returns>
-    /// A normalized thickness factor where positive values indicate thinner sections
-    /// (faster cooling) and negative values indicate thicker sections (slower cooling).
-    /// </returns>
-    private static double ComputeThicknessFactor(double thicknessMm)
-        => (CastIronEstimationConstants.ThicknessPivotMm - thicknessMm) / CastIronEstimationConstants.ThicknessScale;
-
-    /// <summary>
-    /// Computes the graphitization score (0-1 scale) indicating the tendency
-    /// for graphite formation versus carbide formation during solidification.
-    /// 
-    /// Empirical graphitization model based on:
-    /// - Carbon equivalent influence on eutectic behavior
-    /// - Cooling rate influence on graphite vs carbide formation
-    /// - Section thickness effects on solidification
-    ///
-    /// Based on foundry metallurgy literature (ASM Cast Iron Handbook).
-    ///
-    /// This equation is an engineering approximation rather than a
-    /// published closed-form formula.
-    /// </summary>
-    /// <param name="ce">The carbon equivalent value.</param>
-    /// <param name="coolingFactor">The normalized cooling factor.</param>
-    /// <param name="thicknessFactor">The normalized thickness factor.</param>
-    /// <returns>
-    /// A score between 0 and 1, where:
-    /// <list type="bullet">
-    ///   <item><description>Higher values (>0.6) indicate strong graphitization (softer, more machinable)</description></item>
-    ///   <item><description>Lower values (&lt;0.4) indicate carbide tendency (harder, potential chill)</description></item>
-    /// </list>
-    /// </returns>
-    private static double ComputeGraphitizationScore(double ce, double coolingFactor, double thicknessFactor)
-    {
-        var raw =
-            CastIronEstimationConstants.BaseGraphScore
-            + CastIronEstimationConstants.CeWeight * (ce - CastIronEstimationConstants.CePivot)
-            - CastIronEstimationConstants.CoolingWeight * coolingFactor
-            - CastIronEstimationConstants.ThicknessWeight * thicknessFactor;
-
-        return Clamp01(raw);
-    }
-
-    /// <summary>
-    /// Estimates the Brinell hardness (HB) range based on graphitization score
-    /// and solidification conditions.
-    /// 
-    /// Hardness estimation reflects:
-    /// - Increased hardness with faster cooling
-    /// - Increased hardness with reduced graphitization
-    ///
-    /// Supported by gray iron cooling studies:
-    /// https://www.sciencedirect.com/... cooling rate hardness
-    /// </summary>
-    /// <param name="graphScore">The graphitization score (0-1).</param>
-    /// <param name="coolingFactor">The normalized cooling factor.</param>
-    /// <param name="thicknessFactor">The normalized thickness factor.</param>
-    /// <returns>
-    /// A <see cref="HardnessRange"/> representing the expected hardness span in Brinell units.
-    /// </returns>
-    /// <remarks>
-    /// Lower graphitization scores and faster cooling rates generally result in
-    /// higher hardness values due to increased carbide formation and finer pearlite structures.
-    /// </remarks>
-    private static HardnessRange ComputeHardness(double graphScore, double coolingFactor, double thicknessFactor)
-    {
-        var hbCenter =
-            CastIronEstimationConstants.BaseHardnessHB
-            + (int)(CastIronEstimationConstants.HardnessGraphWeight * (0.55 - graphScore))
-            + (int)(CastIronEstimationConstants.HardnessCoolingWeight * coolingFactor)
-            + (int)(CastIronEstimationConstants.HardnessThicknessWeight * thicknessFactor);
-
-        var min = ClampInt(
-            hbCenter - CastIronEstimationConstants.HardnessSpreadHB,
-            CastIronEstimationConstants.MinHardnessHB,
-            CastIronEstimationConstants.MaxHardnessHB);
-
-        var max = ClampInt(
-            hbCenter + CastIronEstimationConstants.HardnessSpreadHB,
-            CastIronEstimationConstants.MinHardnessHB,
-            CastIronEstimationConstants.MaxHardnessHB);
-
-        return new HardnessRange(MinHB: min, MaxHB: max);
-    }
-
-    /// <summary>
-    /// Assesses the risk of chilled (carbide) structure formation in the casting.
-    /// 
-    /// References:
-    /// Hardness estimation reflects:
-    /// - Increased hardness with faster cooling
-    /// - Increased hardness with reduced graphitization
-    ///
-    /// Supported by gray iron cooling studies:
-    /// https://www.sciencedirect.com/... cooling rate hardness
-    /// </summary>
-    /// <param name="graphScore">The graphitization score (0-1).</param>
-    /// <param name="coolingFactor">The normalized cooling factor.</param>
-    /// <param name="thicknessFactor">The normalized thickness factor.</param>
-    /// <returns>A <see cref="RiskFlag"/> indicating the severity and description of chill risk.</returns>
-    /// <remarks>
-    /// Chill formation occurs when cooling is too rapid for graphite to form, resulting
-    /// in hard, brittle white iron structures that are difficult to machine.
-    /// </remarks>
-    private static RiskFlag BuildChillRisk(double graphScore, double coolingFactor, double thicknessFactor)
-    {
-        var score = Clamp01(0.55 - graphScore + 0.25 * coolingFactor + 0.20 * thicknessFactor);
-        var sev = ScoreToSeverity(score);
-
-        return new RiskFlag(
-            Code: "CHILL_RISK",
-            Name: "Chill Risk",
-            Severity: sev,
-            Message: sev switch
-            {
-                RiskSeverity.High => "High risk of chilled structure in thin/fast-cooled sections.",
-                RiskSeverity.Medium => "Moderate chill risk. Watch section thickness and cooling rate.",
-                _ => "Low chill risk under current conditions."
-            });
-    }
-
-    /// <summary>
-    /// Evaluates the risk of shrinkage porosity and feeding issues during solidification.
-    /// </summary>
-    /// <param name="ce">The carbon equivalent value.</param>
-    /// <param name="thicknessFactor">The normalized thickness factor.</param>
-    /// <param name="mn">The manganese percentage.</param>
-    /// <returns>A <see cref="RiskFlag"/> indicating the severity and description of shrinkage risk.</returns>
-    /// <remarks>
-    /// Shrinkage sensitivity is influenced by carbon equivalent (lower CE = more shrinkage),
-    /// section thickness (thicker sections harder to feed), and manganese content.
-    /// </remarks>
-    private static RiskFlag BuildShrinkRisk(double ce, double thicknessFactor, double mn)
-    {
-        var score = Clamp01(0.25 + 0.10 * (ce - 3.6) + 0.25 * (-thicknessFactor) + 0.05 * mn);
-        var sev = ScoreToSeverity(score);
-
-        return new RiskFlag(
-            Code: "SHRINK_RISK",
-            Name: "Shrink/Porosity Risk",
-            Severity: sev,
-            Message: sev switch
-            {
-                RiskSeverity.High => "High feeding sensitivity. Review risering/feeding plan.",
-                RiskSeverity.Medium => "Moderate feeding sensitivity. Confirm gating/risers.",
-                _ => "Low feeding sensitivity expected."
-            });
-    }
-
-    /// <summary>
-    /// Assesses machinability concerns based on expected microstructure.
-    /// </summary>
-    /// <param name="graphScore">The graphitization score (0-1).</param>
-    /// <returns>A <see cref="RiskFlag"/> indicating potential machinability challenges.</returns>
-    /// <remarks>
-    /// Lower graphitization scores indicate harder structures with more carbides,
-    /// which can increase tool wear and reduce machinability.
-    /// </remarks>
-    private static RiskFlag BuildMachinabilityRisk(double graphScore)
-    {
-        var score = Clamp01(0.55 - graphScore);
-        var sev = ScoreToSeverity(score);
-
-        return new RiskFlag(
-            Code: "MACHINABILITY",
-            Name: "Machinability Concern",
-            Severity: sev,
-            Message: sev switch
-            {
-                RiskSeverity.High => "Machinability may be challenging (harder structure).",
-                RiskSeverity.Medium => "Machinability likely acceptable. Verify hardness.",
-                _ => "Machinability likely good (more graphitic)."
-            });
-    }
-
-    /// <summary>
-    /// Converts a normalized risk score (0-1) to a severity level.
-    /// </summary>
-    /// <param name="score01">A risk score between 0 and 1.</param>
-    /// <returns>
-    /// A <see cref="RiskSeverity"/> where:
-    /// <list type="bullet">
-    ///   <item><description>High: score >= 0.66</description></item>
-    ///   <item><description>Medium: 0.33 &lt;= score &lt; 0.66</description></item>
-    ///   <item><description>Low: score &lt; 0.33</description></item>
-    /// </list>
-    /// </returns>
-    private static RiskSeverity ScoreToSeverity(double score01)
-        => score01 >= 0.66 ? RiskSeverity.High
-         : score01 >= 0.33 ? RiskSeverity.Medium
-         : RiskSeverity.Low;
-
-    /// <summary>
-    /// Clamps a double value to the range [0, 1].
-    /// </summary>
-    /// <param name="v">The value to clamp.</param>
-    /// <returns>The clamped value.</returns>
-    private static double Clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
-
-    /// <summary>
-    /// Clamps an integer value to a specified range.
-    /// </summary>
-    /// <param name="v">The value to clamp.</param>
-    /// <param name="min">The minimum allowable value.</param>
-    /// <param name="max">The maximum allowable value.</param>
-    /// <returns>The clamped value.</returns>
-    private static int ClampInt(int v, int min, int max) => v < min ? min : (v > max ? max : v);
 }

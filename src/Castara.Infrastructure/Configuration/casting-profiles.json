@@ -27,8 +27,8 @@
         "coolingSeverityFactor": 1.0
       },
       "riskThresholds": {
-        "chillRiskCeiling": 3.7,
-        "shrinkageRiskFloor": 4.4,
+        "chillRiskCeiling": 4.4,
+        "shrinkageRiskFloor": 3.7,
         "hardnessWarningMinBhn": 170,
         "hardnessWarningMaxBhn": 260
       }
@@ -60,176 +60,11 @@
         "coolingSeverityFactor": 1.15
       },
       "riskThresholds": {
-        "chillRiskCeiling": 3.85,
-        "shrinkageRiskFloor": 4.3,
+        "chillRiskCeiling": 4.3,
+        "shrinkageRiskFloor": 3.85,
         "hardnessWarningMinBhn": 180,
         "hardnessWarningMaxBhn": 285
       }
-    },
-    {
-      "id": "resin-sand-gray-iron-general",
-      "displayName": "Resin Sand - Gray Iron - General",
-      "processFamily": "ResinSand",
-      "ironType": "GrayIron",
-      "defaults": {
-        "SectionThicknessMm": 25.4
-      },
-      "ranges": {
-        "carbonMin": 3.0,
-        "carbonMax": 3.6,
-        "siliconMin": 1.7,
-        "siliconMax": 2.6,
-        "manganeseMin": 0.5,
-        "manganeseMax": 1.0,
-        "phosphorusMin": 0.0,
-        "phosphorusMax": 0.1,
-        "sulfurMin": 0.0,
-        "sulfurMax": 0.12
-      },
-      "targets": {
-        "preferredCarbonEquivalentMin": 3.8,
-        "preferredCarbonEquivalentMax": 4.2,
-        "graphitizationBias": 0.95,
-        "coolingSeverityFactor": 1.05
-      },
-      "riskThresholds": {
-        "chillRiskCeiling": 3.65,
-        "shrinkageRiskFloor": 4.35,
-        "hardnessWarningMinBhn": 180,
-        "hardnessWarningMaxBhn": 270
-      }
-    },
-    {
-      "id": "shell-mold-gray-iron",
-      "displayName": "Shell Mold - Gray Iron",
-      "processFamily": "ShellMold",
-      "ironType": "GrayIron",
-      "defaults": {
-        "SectionThicknessMm": 10.0
-      },
-      "ranges": {
-        "carbonMin": 3.1,
-        "carbonMax": 3.7,
-        "siliconMin": 1.8,
-        "siliconMax": 2.7,
-        "manganeseMin": 0.45,
-        "manganeseMax": 0.85,
-        "phosphorusMin": 0.0,
-        "phosphorusMax": 0.08,
-        "sulfurMin": 0.0,
-        "sulfurMax": 0.1
-      },
-      "targets": {
-        "preferredCarbonEquivalentMin": 4.0,
-        "preferredCarbonEquivalentMax": 4.3,
-        "graphitizationBias": 0.9,
-        "coolingSeverityFactor": 1.2
-      },
-      "riskThresholds": {
-        "chillRiskCeiling": 3.9,
-        "shrinkageRiskFloor": 4.25,
-        "hardnessWarningMinBhn": 190,
-        "hardnessWarningMaxBhn": 300
-      }
-    },
-    {
-      "id": "green-sand-ductile-iron-general",
-      "displayName": "Green Sand - Ductile Iron - General",
-      "processFamily": "GreenSand",
-      "ironType": "DuctileIron",
-      "defaults": {
-        "SectionThicknessMm": 18.0
-      },
-      "ranges": {
-        "carbonMin": 3.4,
-        "carbonMax": 3.9,
-        "siliconMin": 2.1,
-        "siliconMax": 2.8,
-        "manganeseMin": 0.1,
-        "manganeseMax": 0.4,
-        "phosphorusMin": 0.0,
-        "phosphorusMax": 0.06,
-        "sulfurMin": 0.0,
-        "sulfurMax": 0.03
-      },
-      "targets": {
-        "preferredCarbonEquivalentMin": 4.2,
-        "preferredCarbonEquivalentMax": 4.5,
-        "graphitizationBias": 1.1,
-        "coolingSeverityFactor": 1.0
-      },
-      "riskThresholds": {
-        "chillRiskCeiling": 4.05,
-        "shrinkageRiskFloor": 4.2,
-        "hardnessWarningMinBhn": 130,
-        "hardnessWarningMaxBhn": 230
-      }
-    },
-    {
-      "id": "resin-sand-ductile-iron",
-      "displayName": "Resin Sand - Ductile Iron",
-      "processFamily": "ResinSand",
-      "ironType": "DuctileIron",
-      "defaults": {
-        "SectionThicknessMm": 20.0
-      },
-      "ranges": {
-        "carbonMin": 3.4,
-        "carbonMax": 3.9,
-        "siliconMin": 2.0,
-        "siliconMax": 2.7,
-        "manganeseMin": 0.1,
-        "manganeseMax": 0.35,
-        "phosphorusMin": 0.0,
-        "phosphorusMax": 0.05,
-        "sulfurMin": 0.0,
-        "sulfurMax": 0.025
-      },
-      "targets": {
-        "preferredCarbonEquivalentMin": 4.15,
-        "preferredCarbonEquivalentMax": 4.45,
-        "graphitizationBias": 1.05,
-        "coolingSeverityFactor": 1.08
-      },
-      "riskThresholds": {
-        "chillRiskCeiling": 4.0,
-        "shrinkageRiskFloor": 4.18,
-        "hardnessWarningMinBhn": 140,
-        "hardnessWarningMaxBhn": 240
-      }
-    },
-    {
-      "id": "heavy-section-gray-iron-pipe-fitting",
-      "displayName": "Gray Iron - Heavy Section Pipe/Fitting",
-      "processFamily": "GreenSand",
-      "ironType": "GrayIron",
-      "defaults": {
-        "SectionThicknessMm": 38.0
-      },
-      "ranges": {
-        "carbonMin": 3.2,
-        "carbonMax": 3.8,
-        "siliconMin": 1.9,
-        "siliconMax": 2.7,
-        "manganeseMin": 0.5,
-        "manganeseMax": 0.95,
-        "phosphorusMin": 0.0,
-        "phosphorusMax": 0.1,
-        "sulfurMin": 0.0,
-        "sulfurMax": 0.1
-      },
-      "targets": {
-        "preferredCarbonEquivalentMin": 4.1,
-        "preferredCarbonEquivalentMax": 4.4,
-        "graphitizationBias": 1.08,
-        "coolingSeverityFactor": 0.92
-      },
-      "riskThresholds": {
-        "chillRiskCeiling": 3.8,
-        "shrinkageRiskFloor": 4.38,
-        "hardnessWarningMinBhn": 160,
-        "hardnessWarningMaxBhn": 245
-      }
-    }
+    }    
   ]
 }

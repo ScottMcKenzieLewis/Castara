@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Castara.Domain.Casting;
+using Castara.Domain.Estimation.Models.Inputs;
 
 namespace Castara.Application.Abstractions.Repositories;
 

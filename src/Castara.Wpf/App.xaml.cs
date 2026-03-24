@@ -2,6 +2,7 @@
 using Castara.Application.Mapping;
 using Castara.Application.Repositories;
 using Castara.Domain.Estimation.Services;
+using Castara.Domain.Estimation.Services.Strategies;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Services.Clipboard;
@@ -104,6 +105,8 @@ public partial class App : System.Windows.Application
 
                 // Set minimum level (Trace/Debug will be filtered unless explicitly enabled)
                 logging.SetMinimumLevel(LogLevel.Information);
+
+                logging.AddFilter("LuckyPennySoftware.AutoMapper.License", LogLevel.None);
             })
             .Build();
 
@@ -228,6 +231,8 @@ public partial class App : System.Windows.Application
         // Domain Services
         // --------------------
         services.AddSingleton<ICastIronEstimator, CastIronEstimator>();
+        services.AddSingleton<ICastingEstimatorStrategy, GrayIronCastingEstimatorStrategy>();
+
 
         // --------------------
         // Application Services

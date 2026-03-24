@@ -8,9 +8,9 @@ using System.Collections.Generic;
 using AutoMapper;
 using Castara.Application.Abstractions.Repositories;
 using Castara.Application.DTOs;
-using Castara.Domain.Casting;
 using Castara.Domain.Exceptions;
 using Microsoft.Extensions.Options;
+using Castara.Domain.Estimation.Models.Inputs;
 
 namespace Castara.Application.Repositories;
 
@@ -160,7 +160,7 @@ public sealed class JsonCastingProfileRepository : ICastingProfileRepository
         // Validate all profiles to ensure configuration integrity
         foreach (var profile in profiles)
         {
-            profile.ValidateRanges();
+            profile.Validate();
         }
 
         // Cache for subsequent requests

@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Castara.Application.DTOs;
-using Castara.Domain.Casting;
+using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Infrastructure.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;

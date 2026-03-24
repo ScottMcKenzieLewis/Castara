@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Castara.Domain.Estimation.Services.Strategies;
+using System.Collections.Generic;
 
 namespace Castara.Application.DTOs;
 
@@ -45,7 +46,7 @@ public sealed class CastingProfilesConfig
 /// </para>
 /// <para>
 /// <strong>Transformation:</strong> After deserialization, instances are transformed into
-/// <see cref="Castara.Domain.Casting.CastingProfileDefinition"/> domain models for use
+/// <see cref="Domain.Estimation.Models.Inputs.CastingProfileDefinition"/> domain models for use
 /// throughout the application.
 /// </para>
 /// <para>
@@ -87,7 +88,7 @@ public sealed class CastingProfileConfig
     /// </value>
     /// <remarks>
     /// Used to select the appropriate estimation strategy at runtime. Must match a registered
-    /// <see cref="Castara.Domain.Estimation.Services.ICastingEstimatorStrategy.SupportedProfileFamily"/>.
+    /// <see cref="ICastingEstimatorStrategy.SupportedProfileFamily"/>.
     /// </remarks>
     public string ProcessFamily { get; init; } = "";
 

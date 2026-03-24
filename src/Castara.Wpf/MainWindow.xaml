@@ -1,37 +1,8 @@
-﻿<!--
-    MainWindow.xaml
-    
-    The main application window for Castara, providing a custom-styled chromeless window
-    with integrated title bar controls, theme management, log viewing, and content hosting.
-    
-    FEATURES:
-    - Custom title bar with minimize, maximize/restore, and close buttons
-    - Material Design theming with dark/light mode toggle
-    - Unit system toggle (Standard SI / American Standard)
-    - Casting profile selection with dynamic loading
-    - Integrated log viewer with badge notification
-    - Status bar with real-time feedback
-    - Content area for hosting calculation views
-    
-    ARCHITECTURE:
-    - WindowChrome: Enables custom title bar while maintaining native window behaviors
-    - DialogHost: Modal overlay pattern for log viewer
-    - ShellViewModel: Coordinates application-wide state and navigation
-    - LogViewerViewModel: Encapsulated log viewer concerns
-    - CalculationsViewModel: Main calculation interface (hosted in content area)
-    
-    BINDINGS:
-    - Window.DataContext → ShellViewModel
-    - LogViewerView.DataContext → ShellViewModel.LogViewerViewModel
-    - ContentControl.Content → ShellViewModel.CurrentViewModel (CalculationsViewModel)
--->
-
-<Window x:Class="Castara.Wpf.MainWindow"
+﻿<Window x:Class="Castara.Wpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        xmlns:conv="clr-namespace:Castara.Wpf.Infrastructure.Converters"
         xmlns:views="clr-namespace:Castara.Wpf.Views"
         Title="Castara"
         Width="1200"
@@ -45,20 +16,6 @@
         ResizeMode="CanResize"
         Background="#1B1F22">
 
-    <!-- ============================================================
-         WINDOW CHROME CONFIGURATION
-         
-         Enables custom chromeless window with native behaviors:
-         - CaptionHeight: Draggable title bar area height (44px)
-         - ResizeBorderThickness: Resize grip width around edges (7px)
-         - CornerRadius: Rounded corners for modern aesthetic (10px)
-         - GlassFrameThickness: Set to 0 for full custom rendering
-         - UseAeroCaptionButtons: False to use custom caption buttons
-         
-         This configuration allows complete visual customization while
-         preserving Windows' native window management behaviors (snap,
-         aero shake, taskbar integration, etc.)
-         ============================================================ -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="44"
                             ResizeBorderThickness="7"
@@ -67,35 +24,9 @@
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <!-- ============================================================
-         WINDOW RESOURCES
-         ============================================================ -->
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <!-- ========================================
-             CASTING PROFILE COMBOBOX STYLES
-             
-             Custom-styled ComboBox for profile selection with:
-             - Custom toggle button (dropdown arrow)
-             - Styled items with hover/selected states
-             - Theme-aware colors (dark/light mode)
-             ======================================== -->
-
-        <!-- Dropdown arrow toggle button -->
-        <ControlTemplate x:Key="ShellProfileComboBoxToggleButtonTemplate"
-                         TargetType="ToggleButton">
-            <Border Background="Transparent"
-                    BorderThickness="0">
-                <materialDesign:PackIcon Kind="MenuDown"
-                                         Width="18"
-                                         Height="18"
-                                         Foreground="{DynamicResource MaterialDesignBody}"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center"/>
-            </Border>
-        </ControlTemplate>
-
-        <!-- ComboBox item style with hover/selected states -->
         <Style x:Key="ShellProfileComboBoxItemStyle"
                TargetType="ComboBoxItem">
             <Setter Property="Foreground"
@@ -126,7 +57,6 @@
                         </Border>
 
                         <ControlTemplate.Triggers>
-                            <!-- Hover state -->
                             <Trigger Property="IsHighlighted"
                                      Value="True">
                                 <Setter TargetName="ItemBorder"
@@ -136,7 +66,6 @@
                                         Value="#FFFFFF"/>
                             </Trigger>
 
-                            <!-- Selected state -->
                             <Trigger Property="IsSelected"
                                      Value="True">
                                 <Setter TargetName="ItemBorder"
@@ -146,7 +75,6 @@
                                         Value="#08141C"/>
                             </Trigger>
 
-                            <!-- Selected + Hover state -->
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected"
@@ -166,21 +94,19 @@
             </Setter>
         </Style>
 
-        <!-- Main ComboBox style with custom template -->
         <Style x:Key="ShellProfileComboBoxStyle"
-               TargetType="ComboBox">
+               TargetType="ComboBox"
+               BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
             <Setter Property="Foreground"
-                    Value="#FFFFFF"/>
+                    Value="{DynamicResource MaterialDesignBody}"/>
             <Setter Property="Background"
-                    Value="#162027"/>
+                    Value="{DynamicResource MaterialDesignPaper}"/>
             <Setter Property="BorderBrush"
-                    Value="#3B4B56"/>
-            <Setter Property="BorderThickness"
-                    Value="1"/>
+                    Value="{DynamicResource MaterialDesignDivider}"/>
             <Setter Property="Padding"
-                    Value="10,6"/>
+                    Value="12,6"/>
             <Setter Property="MinHeight"
-                    Value="34"/>
+                    Value="36"/>
             <Setter Property="FontSize"
                     Value="14"/>
             <Setter Property="FontWeight"
@@ -189,155 +115,20 @@
                     Value="{StaticResource ShellProfileComboBoxItemStyle}"/>
             <Setter Property="ScrollViewer.CanContentScroll"
                     Value="True"/>
-
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <!-- Selection display border -->
-                            <Border x:Name="OuterBorder"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6">
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <!-- Dropdown arrow -->
-                                        <ColumnDefinition Width="36"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Selected item display -->
-                                    <TextBlock x:Name="SelectionText"
-                                               Grid.Column="0"
-                                               Margin="12,6,8,6"
-                                               VerticalAlignment="Center"
-                                               Text="{Binding SelectedItem.DisplayName, RelativeSource={RelativeSource TemplatedParent}}"
-                                               TextTrimming="CharacterEllipsis"
-                                               FontSize="{TemplateBinding FontSize}"
-                                               FontWeight="{TemplateBinding FontWeight}"
-                                               Foreground="{TemplateBinding Foreground}"/>
-
-                                    <!-- Dropdown toggle button -->
-                                    <ToggleButton Grid.Column="1"
-                                                  Focusable="False"
-                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                                                  ClickMode="Press"
-                                                  Template="{StaticResource ShellProfileComboBoxToggleButtonTemplate}"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Dropdown popup -->
-                            <Popup x:Name="Popup"
-                                   Placement="Bottom"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   PopupAnimation="Slide">
-                                <Border Margin="0,4,0,0"
-                                        Background="{DynamicResource MaterialDesignPaper}"
-                                        BorderBrush="{DynamicResource MaterialDesignDivider}"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        SnapsToDevicePixels="True">
-                                    <ScrollViewer Margin="0"
-                                                  SnapsToDevicePixels="True">
-                                        <StackPanel IsItemsHost="True"
-                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-
-                        <ControlTemplate.Triggers>
-                            <!-- Mouse hover state -->
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-                                <Setter TargetName="OuterBorder"
-                                        Property="BorderBrush"
-                                        Value="{DynamicResource PrimaryHueMidBrush}"/>
-                            </Trigger>
-
-                            <!-- Keyboard focus state -->
-                            <Trigger Property="IsKeyboardFocusWithin"
-                                     Value="True">
-                                <Setter TargetName="OuterBorder"
-                                        Property="BorderBrush"
-                                        Value="{DynamicResource PrimaryHueLightBrush}"/>
-                            </Trigger>
-
-                            <!-- No items state -->
-                            <Trigger Property="HasItems"
-                                     Value="False">
-                                <Setter TargetName="SelectionText"
-                                        Property="Text"
-                                        Value="No profiles"/>
-                            </Trigger>
-
-                            <!-- Disabled state -->
-                            <Trigger Property="IsEnabled"
-                                     Value="False">
-                                <Setter TargetName="OuterBorder"
-                                        Property="Opacity"
-                                        Value="0.55"/>
-                            </Trigger>
-
-                            <!-- Dark mode colors -->
-                            <DataTrigger Binding="{Binding DataContext.IsDarkMode, RelativeSource={RelativeSource AncestorType=Window}}"
-                                         Value="True">
-                                <Setter Property="Background"
-                                        Value="#162027"/>
-                                <Setter Property="Foreground"
-                                        Value="#FFFFFF"/>
-                                <Setter Property="BorderBrush"
-                                        Value="#3B4B56"/>
-                            </DataTrigger>
-
-                            <!-- Light mode colors -->
-                            <DataTrigger Binding="{Binding DataContext.IsDarkMode, RelativeSource={RelativeSource AncestorType=Window}}"
-                                         Value="False">
-                                <Setter Property="Background"
-                                        Value="#F7FAFC"/>
-                                <Setter Property="Foreground"
-                                        Value="#142033"/>
-                                <Setter Property="BorderBrush"
-                                        Value="#C9D4E0"/>
-                            </DataTrigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <!--<Setter Property="materialDesign:HintAssist.Hint"
+                    Value="Select a casting profile"/>-->
         </Style>
 
-        <!-- ========================================
-             BUILT-IN CONVERTERS
-             ======================================== -->
-
-        <!-- Standard WPF converter for bool → Visibility -->
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-
-        <!-- ========================================
-             IMPLICIT CONTROL STYLES
-             
-             Default styles applied to all controls of the specified type.
-             Ensures consistent theming by binding to Material Design
-             dynamic resources that change with theme switches.
-             ======================================== -->
-
-        <!-- TextBlock: Default body text styling -->
         <Style TargetType="TextBlock">
             <Setter Property="Foreground"
                     Value="{DynamicResource MaterialDesignBody}"/>
         </Style>
 
-        <!-- Label: Consistent with TextBlock -->
         <Style TargetType="Label">
             <Setter Property="Foreground"
                     Value="{DynamicResource MaterialDesignBody}"/>
         </Style>
 
-        <!-- TextBox: Material Design outlined style with theme colors -->
         <Style TargetType="TextBox"
                BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
             <Setter Property="Foreground"
@@ -348,7 +139,6 @@
                     Value="10,6"/>
         </Style>
 
-        <!-- ComboBox: Theme-aware colors -->
         <Style TargetType="ComboBox">
             <Setter Property="Foreground"
                     Value="{DynamicResource MaterialDesignBody}"/>
@@ -356,54 +146,19 @@
                     Value="{DynamicResource MaterialDesignPaper}"/>
         </Style>
 
-        <!-- ========================================
-             CAPTION BUTTON BRUSHES
-             
-             Pre-defined brushes for title bar button states.
-             
-             NOTE: Hex colors with alpha channel (#AARRGGBB) cannot
-             be used directly in style triggers, so they must be
-             defined as SolidColorBrush resources.
-             ======================================== -->
-
-        <!-- Standard caption buttons (minimize, maximize/restore) -->
         <SolidColorBrush x:Key="CaptionHoverBrush"
                          Color="#268A8A8A"/>
-        <!-- 15% opacity gray -->
         <SolidColorBrush x:Key="CaptionPressedBrush"
                          Color="#30909090"/>
-        <!-- 19% opacity gray -->
-
-        <!-- Close button (Windows-standard red) -->
         <SolidColorBrush x:Key="CaptionCloseHoverBrush"
                          Color="#E81123"/>
-        <!-- Windows accent red -->
         <SolidColorBrush x:Key="CaptionClosePressedBrush"
                          Color="#C50F1F"/>
-        <!-- Darker red when pressed -->
 
-        <!-- ========================================
-             CAPTION BUTTON STYLES
-             
-             Custom button styles for title bar (minimize, maximize, close).
-             
-             FEATURES:
-             - Arrow cursor (not hand) for native Windows consistency
-             - Transparent background with hover/pressed overlays
-             - Fixed 44x44 size matching WindowChrome.CaptionHeight
-             - IsHitTestVisibleInChrome required for WindowChrome interaction
-             
-             NOTES:
-             - CaptionButtonStyle: Base style for minimize/maximize
-             - CaptionCloseButtonStyle: Extends base with red hover state
-             ======================================== -->
-
-        <!-- Base style for minimize and maximize/restore buttons -->
         <Style x:Key="CaptionButtonStyle"
                TargetType="Button">
             <Setter Property="Cursor"
                     Value="Arrow"/>
-            <!-- Arrow, not Hand, for native feel -->
             <Setter Property="Background"
                     Value="Transparent"/>
             <Setter Property="BorderThickness"
@@ -416,7 +171,6 @@
                     Value="Center"/>
             <Setter Property="FocusVisualStyle"
                     Value="{x:Null}"/>
-            <!-- No focus rectangle -->
 
             <Setter Property="Template">
                 <Setter.Value>
@@ -428,7 +182,6 @@
                         </Border>
 
                         <ControlTemplate.Triggers>
-                            <!-- Hover: subtle gray overlay -->
                             <Trigger Property="IsMouseOver"
                                      Value="True">
                                 <Setter TargetName="Bg"
@@ -436,7 +189,6 @@
                                         Value="{StaticResource CaptionHoverBrush}"/>
                             </Trigger>
 
-                            <!-- Pressed: slightly darker overlay -->
                             <Trigger Property="IsPressed"
                                      Value="True">
                                 <Setter TargetName="Bg"
@@ -444,7 +196,6 @@
                                         Value="{StaticResource CaptionPressedBrush}"/>
                             </Trigger>
 
-                            <!-- Disabled: reduced opacity -->
                             <Trigger Property="IsEnabled"
                                      Value="False">
                                 <Setter Property="Opacity"
@@ -456,7 +207,6 @@
             </Setter>
         </Style>
 
-        <!-- Close button style with Windows-standard red hover -->
         <Style x:Key="CaptionCloseButtonStyle"
                TargetType="Button"
                BasedOn="{StaticResource CaptionButtonStyle}">
@@ -470,7 +220,6 @@
                         </Border>
 
                         <ControlTemplate.Triggers>
-                            <!-- Hover: red background (Windows standard) -->
                             <Trigger Property="IsMouseOver"
                                      Value="True">
                                 <Setter TargetName="Bg"
@@ -478,7 +227,6 @@
                                         Value="{StaticResource CaptionCloseHoverBrush}"/>
                             </Trigger>
 
-                            <!-- Pressed: darker red -->
                             <Trigger Property="IsPressed"
                                      Value="True">
                                 <Setter TargetName="Bg"
@@ -486,7 +234,6 @@
                                         Value="{StaticResource CaptionClosePressedBrush}"/>
                             </Trigger>
 
-                            <!-- Disabled: reduced opacity -->
                             <Trigger Property="IsEnabled"
                                      Value="False">
                                 <Setter Property="Opacity"
@@ -497,82 +244,34 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
     </Window.Resources>
 
-    <!-- ============================================================
-         MAIN LAYOUT WITH DIALOG HOST
-         
-         DialogHost wraps the entire window to enable modal overlays.
-         IsOpen binding controls log viewer visibility through
-         LogViewerViewModel.IsOpen property.
-         
-         DIALOG PATTERN:
-         - DialogHost.IsOpen → Controls visibility
-         - DialogHost.DialogContent → Log viewer view
-         - Clicking outside dialog closes it (Material Design behavior)
-         ============================================================ -->
     <materialDesign:DialogHost IsOpen="{Binding LogViewerViewModel.IsOpen}">
-
-        <!-- ========================================
-             PRIMARY WINDOW GRID
-             
-             Four-row vertical layout:
-             Row 0: Custom title bar (44px fixed)
-             Row 1: Toolbar with profile/units/theme (auto-sized)
-             Row 2: Main content area (star-sized, fills space)
-             Row 3: Status bar (36px fixed)
-             ======================================== -->
         <Grid>
             <Grid.RowDefinitions>
-                <!-- Title bar height matches WindowChrome.CaptionHeight -->
                 <RowDefinition Height="44"/>
-                <!-- Toolbar adjusts to content -->
                 <RowDefinition Height="Auto"/>
-                <!-- Content fills remaining space -->
                 <RowDefinition Height="*"/>
-                <!-- Status bar fixed height -->
                 <RowDefinition Height="36"/>
             </Grid.RowDefinitions>
 
-            <!-- ============================================================
-                 ROW 0: CUSTOM TITLE BAR
-                 
-                 Features:
-                 - Application logo and branding
-                 - Window caption buttons (minimize, maximize/restore, close)
-                 - Drag-to-move entire window (MouseLeftButtonDown)
-                 - Double-click-to-maximize (handled in code-behind)
-                 
-                 WindowChrome Integration:
-                 - CaptionHeight determines draggable area
-                 - Caption buttons use IsHitTestVisibleInChrome="True"
-                 - Separate MouseLeftButtonDown handlers prevent interference
-                 ============================================================ -->
             <Border Grid.Row="0"
                     Background="#1F262A"
                     BorderBrush="#2E363B"
                     BorderThickness="0,0,0,1">
-
-                <!-- Entire grid is draggable; double-click maximizes -->
                 <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
-                        <!-- Logo -->
                         <ColumnDefinition Width="Auto"/>
-                        <!-- Title text (fills remaining space) -->
                         <ColumnDefinition Width="*"/>
-                        <!-- Caption buttons -->
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Application logo (64x64 for crisp rendering) -->
                     <Image Width="64"
                            Height="64"
                            VerticalAlignment="Center"
                            RenderOptions.BitmapScalingMode="HighQuality"
                            Source="pack://application:,,,/Resources/castara_logo_64.png"/>
 
-                    <!-- Application title -->
                     <TextBlock Grid.Column="1"
                                Text="CASTARA"
                                FontSize="17"
@@ -580,13 +279,11 @@
                                VerticalAlignment="Center"
                                Foreground="#F0F0F0"/>
 
-                    <!-- Caption buttons stack (minimize, maximize/restore, close) -->
                     <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True"
                                 MouseLeftButtonDown="CaptionButtons_MouseLeftButtonDown">
 
-                        <!-- Minimize button -->
                         <Button Style="{StaticResource CaptionButtonStyle}"
                                 Click="Minimize_Click"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True"
@@ -597,12 +294,10 @@
                                                      Foreground="#D0D0D0"/>
                         </Button>
 
-                        <!-- Maximize/Restore button (icon updates in code-behind) -->
                         <Button Style="{StaticResource CaptionButtonStyle}"
                                 Click="MaxRestore_Click"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True"
                                 ToolTip="Maximize">
-                            <!-- Icon Kind changes between WindowMaximize/WindowRestore -->
                             <materialDesign:PackIcon x:Name="MaxRestoreIcon"
                                                      Kind="WindowMaximize"
                                                      Width="18"
@@ -610,7 +305,6 @@
                                                      Foreground="#D0D0D0"/>
                         </Button>
 
-                        <!-- Close button (red hover state) -->
                         <Button Style="{StaticResource CaptionCloseButtonStyle}"
                                 Click="Close_Click"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True"
@@ -624,49 +318,17 @@
                 </Grid>
             </Border>
 
-            <!-- ============================================================
-                 ROW 1: TOOLBAR WITH CONTROLS
-                 
-                 Material Design ColorZone providing dark background.
-                 Contains three main sections:
-                 - Left: Casting profile selector
-                 - Right: Unit system toggle and theme toggle
-                 
-                 Bindings:
-                 - CastingProfiles → ShellViewModel.CastingProfiles
-                 - SelectedCastingProfile → ShellViewModel.SelectedCastingProfile
-                 - IsAmericanStandard → ShellViewModel.IsAmericanStandard
-                 - IsDarkMode → ShellViewModel.IsDarkMode
-                 ============================================================ -->
             <materialDesign:ColorZone Grid.Row="1"
                                       Mode="PrimaryDark"
                                       Padding="16">
-
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <!-- Profile selector (left side) -->
                         <ColumnDefinition Width="*"/>
-                        <!-- Toggles (right side) -->
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- ========================================
-                         LEFT SIDE: CASTING PROFILE SELECTOR
-                         
-                         Allows user to select from available casting
-                         profiles (Green Sand, No-Bake, etc.)
-                         
-                         Structure:
-                         - Icon (factory)
-                         - Label ("Casting Profile")
-                         - ComboBox (profile selection)
-                         - Description text (iron type + process)
-                         - Loading indicator (when profiles loading)
-                         ======================================== -->
                     <StackPanel Orientation="Horizontal"
                                 VerticalAlignment="Center">
-
-                        <!-- Container border for visual grouping -->
                         <Border CornerRadius="18"
                                 Padding="12,8"
                                 Background="#0F1316"
@@ -675,15 +337,11 @@
                                 MinHeight="48">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <!-- Icon -->
                                     <ColumnDefinition Width="Auto"/>
-                                    <!-- Content -->
                                     <ColumnDefinition Width="*"/>
-                                    <!-- Loading indicator -->
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Factory icon -->
                                 <materialDesign:PackIcon Grid.Column="0"
                                                          Kind="Factory"
                                                          Width="18"
@@ -692,20 +350,16 @@
                                                          Foreground="#D6D6D6"
                                                          VerticalAlignment="Center"/>
 
-                                <!-- Content stack (label, combobox, description) -->
                                 <StackPanel Grid.Column="1"
                                             VerticalAlignment="Center">
-                                    <!-- Section label -->
                                     <TextBlock Text="Casting Profile"
                                                FontSize="11"
                                                Margin="0,0,0,2">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <!-- Default: dark mode color -->
                                                 <Setter Property="Foreground"
                                                         Value="#AEB7BD"/>
                                                 <Style.Triggers>
-                                                    <!-- Light mode: darker text -->
                                                     <DataTrigger Binding="{Binding IsDarkMode}"
                                                                  Value="False">
                                                         <Setter Property="Foreground"
@@ -716,30 +370,22 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
-                                    <!-- Profile selection ComboBox -->
                                     <ComboBox Style="{StaticResource ShellProfileComboBoxStyle}"
-                                              ItemContainerStyle="{StaticResource ShellProfileComboBoxItemStyle}"
                                               Width="340"
                                               MinWidth="260"
-                                              Margin="0"
-                                              ItemsSource="{Binding CastingProfiles}"
-                                              SelectedItem="{Binding SelectedCastingProfile, Mode=TwoWay}"
-                                              DisplayMemberPath="DisplayName"
-                                              VerticalAlignment="Center"
-                                              ToolTip="Select the casting process profile used for defaults and estimation assumptions"/>
+                                              ItemsSource="{Binding CastingProfileOptions}"
+                                              SelectedItem="{Binding SelectedCastingProfileOption, Mode=TwoWay}"
+                                              DisplayMemberPath="DisplayName"/>
 
-                                    <!-- Profile descriptor (iron type + process family) -->
                                     <TextBlock Text="{Binding SelectedCastingProfileDescriptor}"
                                                FontSize="10"
                                                Margin="2,4,0,0"
                                                Opacity="0.9">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <!-- Default: dark mode color -->
                                                 <Setter Property="Foreground"
                                                         Value="#8EA0AE"/>
                                                 <Style.Triggers>
-                                                    <!-- Light mode: darker text -->
                                                     <DataTrigger Binding="{Binding IsDarkMode}"
                                                                  Value="False">
                                                         <Setter Property="Foreground"
@@ -751,7 +397,6 @@
                                     </TextBlock>
                                 </StackPanel>
 
-                                <!-- Loading indicator (visible during profile load) -->
                                 <TextBlock Grid.Column="2"
                                            Text="Loading..."
                                            Margin="12,0,0,0"
@@ -762,46 +407,24 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ========================================
-                         RIGHT SIDE: UNIT AND THEME TOGGLES
-                         
-                         Two toggle groups:
-                         1. Unit system (Standard ↔ American)
-                         2. Theme (Light ↔ Dark)
-                         
-                         Both use Material Design switch toggles.
-                         ======================================== -->
                     <StackPanel Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
 
-                        <!-- ====================================
-                             UNIT SYSTEM TOGGLE
-                             
-                             Controls: Standard (SI) ↔ American
-                             - Standard: mm, °C/s, wt%
-                             - American: inches, °F/s, wt%
-                             
-                             Border highlights when American mode active.
-                             ==================================== -->
                         <Border CornerRadius="18"
                                 Padding="14,6"
                                 Margin="0,0,18,0"
                                 Background="#0F1316"
                                 BorderThickness="1">
-
-                            <!-- Border brush with animated highlight -->
                             <Border.BorderBrush>
                                 <SolidColorBrush Color="#2A2A2A"/>
                             </Border.BorderBrush>
 
-                            <!-- Animated border color when American mode active -->
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsAmericanStandard}"
                                                      Value="True">
-                                            <!-- Fade in: blue highlight -->
                                             <DataTrigger.EnterActions>
                                                 <BeginStoryboard>
                                                     <Storyboard>
@@ -811,7 +434,6 @@
                                                     </Storyboard>
                                                 </BeginStoryboard>
                                             </DataTrigger.EnterActions>
-                                            <!-- Fade out: back to neutral -->
                                             <DataTrigger.ExitActions>
                                                 <BeginStoryboard>
                                                     <Storyboard>
@@ -826,11 +448,8 @@
                                 </Style>
                             </Border.Style>
 
-                            <!-- Toggle content -->
                             <StackPanel Orientation="Horizontal"
                                         VerticalAlignment="Center">
-
-                                <!-- Ruler icon -->
                                 <materialDesign:PackIcon Kind="Ruler"
                                                          Width="16"
                                                          Height="16"
@@ -838,27 +457,23 @@
                                                          Margin="0,0,8,0"
                                                          VerticalAlignment="Center"/>
 
-                                <!-- Section label -->
                                 <TextBlock Text="Units"
                                            FontWeight="SemiBold"
                                            Foreground="#D6D6D6"
                                            Margin="0,0,14,0"
                                            VerticalAlignment="Center"/>
 
-                                <!-- Left label: Standard -->
                                 <TextBlock Text="Standard"
                                            Foreground="#F0F0F0"
                                            Margin="0,0,8,0"
                                            VerticalAlignment="Center"
                                            Opacity="0.9"/>
 
-                                <!-- Toggle switch (Standard ↔ American) -->
                                 <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
                                               IsChecked="{Binding IsAmericanStandard}"
                                               VerticalAlignment="Center"
                                               ToolTip="Switch between Standard and American Standard units"/>
 
-                                <!-- Right label: American -->
                                 <TextBlock Text="American"
                                            Foreground="#F0F0F0"
                                            Margin="8,0,0,0"
@@ -867,61 +482,29 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ====================================
-                             THEME TOGGLE
-                             
-                             Controls: Light ↔ Dark theme
-                             Updates Material Design theme resources
-                             and custom theme-aware controls.
-                             ==================================== -->
                         <StackPanel Orientation="Horizontal"
                                     VerticalAlignment="Center">
-
-                            <!-- Left label: Light -->
                             <TextBlock Text="Light"
                                        Foreground="#F0F0F0"
                                        Margin="0,0,8,0"
                                        VerticalAlignment="Center"
                                        Opacity="0.9"/>
 
-                            <!-- Toggle switch (Light ↔ Dark) -->
                             <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
                                           IsChecked="{Binding IsDarkMode}"
                                           VerticalAlignment="Center"
                                           ToolTip="Switch between light and dark theme"/>
 
-                            <!-- Right label: Dark -->
                             <TextBlock Text="Dark"
                                        Foreground="#F0F0F0"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
                                        Opacity="0.9"/>
                         </StackPanel>
-
                     </StackPanel>
                 </Grid>
             </materialDesign:ColorZone>
 
-            <!-- ============================================================
-                 ROW 2: MAIN CONTENT AREA
-                 
-                 Hosts the active view through ContentControl data binding.
-                 
-                 BINDING:
-                 Content → ShellViewModel.CurrentViewModel
-                 
-                 CURRENT IMPLEMENTATION:
-                 CurrentViewModel = CalculationsViewModel (calculations interface)
-                 
-                 FUTURE EXTENSIBILITY:
-                 ShellViewModel can swap CurrentViewModel for multi-view navigation
-                 (e.g., settings view, history view, help view).
-                 
-                 LAYOUT:
-                 - HorizontalContentAlignment/VerticalContentAlignment = Stretch
-                   ensures content fills available space
-                 - Margin="20" provides consistent spacing from window edges
-                 ============================================================ -->
             <Grid Grid.Row="2"
                   Margin="20">
                 <ContentControl Content="{Binding CurrentViewModel}"
@@ -929,32 +512,11 @@
                                 VerticalContentAlignment="Stretch"/>
             </Grid>
 
-            <!-- ============================================================
-                 ROW 3: STATUS BAR
-                 
-                 Displays application status information with:
-                 - Left side: Status message (e.g., "Ready", "Calculated", "Error")
-                 - Right side: Status indicator with color-coded circle
-                 - Far right: Log viewer button with notification badge
-                 
-                 STATUS COLORS (iOS/macOS style):
-                 - Green (#35C759): Ok / Success
-                 - Yellow (#FFCC00): Warning / Caution
-                 - Red (#FF3B30): Error / Critical
-                 
-                 BINDINGS:
-                 - StatusLeftText → ShellViewModel.StatusLeftText
-                 - StatusRightText → ShellViewModel.StatusRightText
-                 - StatusBrush → ShellViewModel.StatusBrush (color-coded)
-                 - LogViewerViewModel → ShellViewModel.LogViewerViewModel
-                 ============================================================ -->
             <Border Grid.Row="3"
                     Height="36"
                     Padding="12,6"
                     BorderBrush="#0B0E10"
                     BorderThickness="0,1,0,0">
-
-                <!-- Subtle gradient background (darker at bottom) -->
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0"
                                          EndPoint="0,1">
@@ -967,64 +529,40 @@
 
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <!-- Status message (fills available space) -->
                         <ColumnDefinition Width="*"/>
-                        <!-- Status indicator + log button -->
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Left: Status message text -->
                     <TextBlock Text="{Binding StatusLeftText}"
                                Foreground="#D6D6D6"
                                VerticalAlignment="Center"/>
 
-                    <!-- Right: Status indicator and log viewer button -->
                     <StackPanel Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
 
-                        <!-- Status indicator with color-coded circle -->
                         <Border CornerRadius="14"
                                 Padding="10,4"
                                 Background="#0F1316"
                                 BorderBrush="#2A2A2A"
                                 BorderThickness="1"
                                 VerticalAlignment="Center">
-
                             <StackPanel Orientation="Horizontal">
-                                <!-- Color-coded status circle (bound to StatusBrush) -->
                                 <materialDesign:PackIcon Kind="Circle"
                                                          Width="12"
                                                          Height="12"
                                                          Margin="0,0,8,0"
                                                          Foreground="{Binding StatusBrush}"/>
 
-                                <!-- Status detail text -->
                                 <TextBlock Text="{Binding StatusRightText}"
                                            Foreground="#D6D6D6"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
 
-                        <!-- ====================================
-                             LOG VIEWER BUTTON WITH BADGE
-                             
-                             Opens modal log viewer dialog.
-                             
-                             ENCAPSULATION:
-                             DataContext scoped to LogViewerViewModel
-                             for separation of concerns.
-                             
-                             BADGE:
-                             - Visible when HasLogs = true
-                             - Displays log entry count
-                             - Positioned at top-right corner
-                             ==================================== -->
                         <Grid Margin="10,0,0,0"
                               VerticalAlignment="Center"
                               DataContext="{Binding LogViewerViewModel}">
-
-                            <!-- Log viewer button -->
                             <Button Width="34"
                                     Height="28"
                                     ToolTip="View logs"
@@ -1036,7 +574,6 @@
                                                          Foreground="#D6D6D6"/>
                             </Button>
 
-                            <!-- Notification badge (visible when logs present) -->
                             <Border Width="18"
                                     Height="18"
                                     CornerRadius="9"
@@ -1047,8 +584,6 @@
                                     VerticalAlignment="Top"
                                     Margin="0,-6,-6,0"
                                     Visibility="{Binding HasLogs, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-                                <!-- Log entry count -->
                                 <TextBlock Text="{Binding LogCount}"
                                            Foreground="#FFFFFF"
                                            FontSize="10"
@@ -1057,34 +592,13 @@
                                            VerticalAlignment="Center"/>
                             </Border>
                         </Grid>
-
                     </StackPanel>
                 </Grid>
             </Border>
         </Grid>
 
-        <!-- ============================================================
-             DIALOG HOST CONTENT: LOG VIEWER
-             
-             Modal overlay for viewing application diagnostic logs.
-             
-             BEHAVIOR:
-             - Displayed when LogViewerViewModel.IsOpen = true
-             - Clicking outside dialog closes it (Material Design default)
-             - Provides search, filtering, and detailed log inspection
-             
-             BINDING:
-             DataContext → ShellViewModel.LogViewerViewModel
-             
-             FEATURES:
-             - Search by message, category, exception text
-             - Filter by log level (Trace, Debug, Info, Warning, Error, Critical)
-             - View structured properties and scopes
-             - Real-time updates as logs are generated
-             ============================================================ -->
         <materialDesign:DialogHost.DialogContent>
             <views:LogViewerView DataContext="{Binding LogViewerViewModel}"/>
         </materialDesign:DialogHost.DialogContent>
-
     </materialDesign:DialogHost>
 </Window>

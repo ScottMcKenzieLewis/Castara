@@ -1,4 +1,4 @@
-﻿using Castara.Domain.Casting;
+﻿using Castara.Domain.Estimation.Models.Inputs;
 
 namespace Castara.Wpf.Infrastructure.Abstractions;
 

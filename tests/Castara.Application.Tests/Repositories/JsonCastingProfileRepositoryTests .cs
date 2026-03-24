@@ -64,8 +64,8 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
         profile.PreferredCarbonEquivalentMax.Should().Be(4.3);
         profile.GraphitizationBias.Should().Be(0.15);
         profile.CoolingSeverityFactor.Should().Be(1.1);
-        profile.ChillRiskCeiling.Should().Be(3.9);
-        profile.ShrinkageRiskFloor.Should().Be(4.35);
+        profile.ChillRiskCeiling.Should().Be(4.35);
+        profile.ShrinkageRiskFloor.Should().Be(3.9);
         profile.HardnessWarningMinBhn.Should().Be(170);
         profile.HardnessWarningMaxBhn.Should().Be(240);
     }
@@ -242,8 +242,8 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
                 "CoolingSeverityFactor": 1.1
               },
               "RiskThresholds": {
-                "ChillRiskCeiling": 3.9,
-                "ShrinkageRiskFloor": 4.35,
+                "ChillRiskCeiling": 4.35,
+                "ShrinkageRiskFloor": 3.9,
                 "HardnessWarningMinBhn": 170,
                 "HardnessWarningMaxBhn": 240
               }
@@ -283,8 +283,8 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
                 "CoolingSeverityFactor": 1.1
               },
               "RiskThresholds": {
-                "ChillRiskCeiling": 3.9,
-                "ShrinkageRiskFloor": 4.35,
+                "ChillRiskCeiling": 4.35,
+                "ShrinkageRiskFloor": 3.9,
                 "HardnessWarningMinBhn": 170,
                 "HardnessWarningMaxBhn": 240
               }
@@ -324,8 +324,8 @@ public sealed class JsonCastingProfileRepositoryTests : IDisposable
                 "CoolingSeverityFactor": 1.2
               },
               "RiskThresholds": {
-                "ChillRiskCeiling": 3.85,
-                "ShrinkageRiskFloor": 4.30,
+                "ChillRiskCeiling": 4.30,
+                "ShrinkageRiskFloor": 3.85,
                 "HardnessWarningMinBhn": 180,
                 "HardnessWarningMaxBhn": 250
               }
