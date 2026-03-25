@@ -5,11 +5,11 @@
 A modern WPF desktop application for estimating mechanical properties of gray cast iron based on chemical composition, casting section characteristics, and process-specific profiles. Built with .NET 8 and Material Design, Castara provides foundry engineers and metallurgists with an intuitive interface for rapid property predictions with profile-driven risk assessment and visual feedback.
 
 ## Screenshot
-<img width="1484" height="962" alt="image" src="https://github.com/user-attachments/assets/3248b7be-8fd4-4ac3-b256-01769b909433" />
+<img width="1200" height="780" alt="image" src="https://github.com/user-attachments/assets/8a5da74e-ac7c-4f1f-930a-65bd7f1ae6e5" />
 
 ## Demo
 
-https://github.com/user-attachments/assets/6c808a1a-e29e-44f1-a407-fa73e9d0b984
+https://github.com/user-attachments/assets/a326756b-e2e7-4335-81e8-a604c9eebeab
 
 ## Features
 
@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/6c808a1a-e29e-44f1-a407-fa73e9d0b984
 
 ## Technology Stack
 
-- **.NET 8.0** - Latest LTS framework
+- **.NET 8.0** - LTS framework
 - **WPF** - Windows Presentation Foundation for rich desktop UI
 - **C# 12.0** - Modern language features including primary constructors and record types
 - **AutoMapper** - Object-to-object mapping for DTOs and domain models
