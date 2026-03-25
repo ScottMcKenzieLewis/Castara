@@ -33,6 +33,56 @@ https://github.com/user-attachments/assets/a326756b-e2e7-4335-81e8-a604c9eebeab
 - **Material Design UI**: Modern, professional interface using MaterialDesignInXaml with custom chrome
 - **Type-Safe Domain Models**: Robust domain layer with validation constraints and immutable value objects
 - **AutoMapper Integration**: Seamless DTO-to-domain model transformation
+- **Crash Reporting**: Automated crash report generation with privacy-preserving path sanitization
+
+### Crash Reporting & Diagnostics
+
+Castara includes a comprehensive crash reporting system that captures detailed diagnostic information when unexpected errors occur:
+
+#### Features
+- **Automatic Crash Report Generation**: Unhandled exceptions are automatically captured and converted into structured crash reports
+- **Privacy-Preserving Sanitization**: File paths and usernames are automatically redacted from error messages, stack traces, and log entries while preserving filenames for debugging
+- **Rich Diagnostic Context**: Reports include:
+  - Exception details (type, message, stack trace, inner exceptions)
+  - System information (OS, .NET runtime version, application version)
+  - Application state snapshot (theme, active view, casting profile, unit system, current composition values)
+  - Recent log entries (last 200 entries with timestamps, levels, categories, and messages)
+- **JSON Format**: Reports are saved as human-readable, structured JSON files for easy analysis
+- **Persistent Storage**: Reports are stored in `%LocalAppData%\Castara\CrashReports` with timestamped filenames
+- **User Notification**: Friendly dialog displays the report location and unique report ID after successful save
+
+#### Path Sanitization Example
+
+The crash reporting system protects user privacy by redacting personal directory paths while preserving critical debugging information:
+
+**Original exception message:**
+```
+Error at C:\Users\ScottLewis\OneDrive\git\Castara\src\ViewModels\ShellViewModel.cs:line 142
+```
+
+**Sanitized in crash report:**
+```
+Error at [redacted-path]\ShellViewModel.cs:line 142
+```
+
+This ensures that crash reports can be safely shared for debugging without exposing sensitive user information like usernames or personal directory structures.
+
+#### Report Structure
+
+Crash reports include the following information:
+- **Report ID**: Unique identifier for tracking (e.g., `abc123def456`)
+- **Timestamp**: UTC timestamp when the crash occurred
+- **Source**: Origin of the crash (e.g., `DispatcherUnhandledException`)
+- **Exception**: Primary exception with type, message, and stack trace
+- **Inner Exceptions**: Flattened collection of all nested exceptions
+- **Context**: Application state including:
+  - Current theme (Light/Dark)
+  - Active view (CalculationsViewModel, etc.)
+  - Selected casting profile
+  - Unit system (Standard/American)
+  - Current composition values (C, Si, Mn, P, S)
+  - Section parameters (thickness, cooling rate)
+- **Recent Logs**: Last 200 log entries with full context
 
 ---
 
