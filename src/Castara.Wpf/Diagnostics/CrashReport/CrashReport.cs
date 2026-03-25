@@ -26,3 +26,28 @@ public sealed record CrashReport(
     IReadOnlyList<CrashExceptionInfo> InnerExceptions,
     IReadOnlyDictionary<string, string> Context,
     IReadOnlyList<CrashLogEntry> RecentLogs);
+
+
+/// <summary>
+/// Represents an immutable log entry captured for crash reporting.
+/// </summary>
+/// <param name="TimestampUtc">The UTC timestamp when the log entry was created.</param>
+/// <param name="Level">The log level (e.g., Information, Warning, Error).</param>
+/// <param name="Category">The log category or source.</param>
+/// <param name="Message">The log message content.</param>
+public sealed record CrashLogEntry(
+    DateTimeOffset TimestampUtc,
+    string Level,
+    string Category,
+    string Message);
+
+/// <summary>
+/// Represents immutable exception information captured during a crash.
+/// </summary>
+/// <param name="Type">The fully qualified type name of the exception.</param>
+/// <param name="Message">The exception message.</param>
+/// <param name="StackTrace">The stack trace of the exception, or <see langword="null"/> if unavailable.</param>
+public sealed record CrashExceptionInfo(
+    string Type,
+    string Message,
+    string? StackTrace);
