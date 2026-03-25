@@ -4,7 +4,7 @@ using Castara.Domain.Estimation.Models.Outputs;
 using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Validation;
 using Castara.Wpf.Diagnostics.CrashReport;
-using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
+using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Commands;
 using Castara.Wpf.Infrastructure.Components;
@@ -161,6 +161,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
 
         _status.Set(AppStatusLevel.Ok, "Ready", "Select a casting profile");
         _log.LogInformation("CalculationsViewModel initialized");
+        PublishSnapshotFields();
     }
 
     // ============================================================
@@ -545,7 +546,7 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
                 return;
 
             _isDarkTheme = value;
-            _applicationStateSnapshotService.SetTheme(value ? "Dark" : "Light");
+            _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Theme, value ? "Dark" : "Light");
             OnPropertyChanged();
 
             RebuildPlotsForTheme();
@@ -1250,13 +1251,12 @@ public sealed class CalculationsViewModel : INotifyPropertyChanged, IThemeAware,
 
     private void PublishSnapshotFields()
     {
-        _applicationStateSnapshotService.SetField("Carbon", CarbonText);
-        _applicationStateSnapshotService.SetField("Silicon", SiliconText);
-        _applicationStateSnapshotService.SetField("Manganese", ManganeseText);
-        _applicationStateSnapshotService.SetField("Phosphorus", PhosphorusText);
-        _applicationStateSnapshotService.SetField("Sulfur", SulfurText);
-        _applicationStateSnapshotService.SetField("Thickness", ThicknessText);
-        _applicationStateSnapshotService.SetField("CoolingRate", CoolingRateText);
-        _applicationStateSnapshotService.SetField("UnitSystem", _unitSystem.ToString());
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Carbon, CarbonText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Silicon, SiliconText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Manganese, ManganeseText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Phosphorus, PhosphorusText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Sulfur, SulfurText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Thickness, ThicknessText);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.CoolingRate, CoolingRateText);
     }
 }

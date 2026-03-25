@@ -4,7 +4,7 @@ using Castara.Application.Repositories;
 using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Services.Strategies;
 using Castara.Wpf.Diagnostics.CrashReport;
-using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
+using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using Castara.Wpf.Infrastructure.Abstractions;
 using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Services.Clipboard;
@@ -323,24 +323,33 @@ public partial class App : System.Windows.Application
     {
         var log = host.Services.GetRequiredService<ILogger<App>>();
 
-        // 1) UI thread exceptions
         Current.DispatcherUnhandledException += (s, e) =>
         {
             log.LogCritical(e.Exception, "Unhandled UI (Dispatcher) exception");
-            e.Handled = true; // Prevent application termination
 
-            // Optional: Show user-friendly error dialog
-            // MessageBox.Show(e.Exception.Message, "Unexpected error", MessageBoxButton.OK, MessageBoxImage.Error);
+            try
+            {
+                var crashService = host.Services.GetRequiredService<ICrashReportService>();
+                crashService.HandleFatal(e.Exception, "DispatcherUnhandledException");
+            }
+            catch (Exception crashEx)
+            {
+                log.LogCritical(crashEx, "Failed while handling dispatcher crash report");
+            }
+
+            // Mark handled so WPF does not show its own unhandled exception dialog.
+            // We are terminating explicitly below.
+            e.Handled = true;
+
+            Current.Shutdown(-1);
         };
 
-        // 2) Non-UI thread exceptions (TaskScheduler)
         TaskScheduler.UnobservedTaskException += (s, e) =>
         {
             log.LogCritical(e.Exception, "Unobserved Task exception");
-            e.SetObserved(); // Prevent finalizer thread crash
+            e.SetObserved();
         };
 
-        // 3) AppDomain exceptions (last resort)
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {
             if (e.ExceptionObject is Exception ex)
@@ -349,6 +358,19 @@ public partial class App : System.Windows.Application
                     ex,
                     "Unhandled AppDomain exception (IsTerminating={IsTerminating})",
                     e.IsTerminating);
+
+                if (e.IsTerminating)
+                {
+                    try
+                    {
+                        var crashService = host.Services.GetRequiredService<ICrashReportService>();
+                        crashService.HandleFatal(ex, "AppDomainUnhandledException");
+                    }
+                    catch (Exception crashEx)
+                    {
+                        log.LogCritical(crashEx, "Failed while handling AppDomain crash report");
+                    }
+                }
             }
             else
             {

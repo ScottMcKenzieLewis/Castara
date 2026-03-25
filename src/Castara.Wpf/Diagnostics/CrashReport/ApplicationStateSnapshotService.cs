@@ -1,87 +1,78 @@
-﻿using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
+﻿using Castara.Wpf.Diagnostics.CrashReport;
+using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using System.Collections.Concurrent;
 
-namespace Castara.Wpf.Diagnostics.CrashReport;
-
+/// <summary>
+/// Provides thread-safe management of application state key-value pairs for crash reporting.
+/// </summary>
 public sealed class ApplicationStateSnapshotService : IApplicationStateSnapshotService
 {
-    private readonly object _gate = new();
+    private readonly ConcurrentDictionary<string, string> _values =
+        new(StringComparer.Ordinal);
 
-    private string? _theme;
-    private string? _activeView;
-    private string? _selectedCastingProfile;
-
-    private readonly ConcurrentDictionary<string, string> _fields = new();
-
+    /// <summary>
+    /// Creates an immutable snapshot of the current application state.
+    /// </summary>
+    /// <returns>An <see cref="ApplicationStateSnapshot"/> containing a copy of all current state values.</returns>
     public ApplicationStateSnapshot GetSnapshot()
     {
-        lock (_gate)
-        {
-            return new ApplicationStateSnapshot(
-                Theme: _theme,
-                ActiveView: _activeView,
-                SelectedCastingProfile: _selectedCastingProfile,
-                Fields: new Dictionary<string, string>(_fields));
-        }
+        var copy = new Dictionary<string, string>(_values, StringComparer.Ordinal);
+        return new ApplicationStateSnapshot(copy);
     }
 
-    public void SetTheme(string? theme)
-    {
-        lock (_gate)
-        {
-            _theme = Normalize(theme);
-        }
-    }
-
-    public void SetActiveView(string? activeView)
-    {
-        lock (_gate)
-        {
-            _activeView = Normalize(activeView);
-        }
-    }
-
-    public void SetSelectedCastingProfile(string? profileDisplayName)
-    {
-        lock (_gate)
-        {
-            _selectedCastingProfile = Normalize(profileDisplayName);
-        }
-    }
-
-    public void SetField(string key, string? value)
+    /// <summary>
+    /// Sets or updates a state value associated with the specified key.
+    /// If the value is <see langword="null"/> or whitespace, the key is removed.
+    /// </summary>
+    /// <param name="key">The key to set. Whitespace is trimmed.</param>
+    /// <param name="value">The value to associate with the key, or <see langword="null"/> to remove the key.</param>
+    public void SetValue(string key, string? value)
     {
         if (string.IsNullOrWhiteSpace(key))
             return;
 
+        var normalizedKey = key.Trim();
         var normalizedValue = Normalize(value);
 
-        if (string.IsNullOrWhiteSpace(normalizedValue))
+        if (normalizedValue is null)
         {
-            _fields.TryRemove(key, out _);
+            _values.TryRemove(normalizedKey, out _);
             return;
         }
 
-        _fields[key] = normalizedValue;
+        _values[normalizedKey] = normalizedValue;
     }
 
-    public void RemoveField(string key)
+    /// <summary>
+    /// Removes the value associated with the specified key.
+    /// </summary>
+    /// <param name="key">The key to remove. Whitespace is trimmed.</param>
+    public void RemoveValue(string key)
     {
         if (string.IsNullOrWhiteSpace(key))
             return;
 
-        _fields.TryRemove(key, out _);
+        _values.TryRemove(key.Trim(), out _);
     }
 
-    public void ClearFields()
+    /// <summary>
+    /// Removes all state values.
+    /// </summary>
+    public void Clear()
     {
-        _fields.Clear();
+        _values.Clear();
     }
 
+    /// <summary>
+    /// Normalizes a value by trimming whitespace, returning <see langword="null"/> for empty or whitespace-only strings.
+    /// </summary>
+    /// <param name="value">The value to normalize.</param>
+    /// <returns>The trimmed value, or <see langword="null"/> if the input is <see langword="null"/>, empty, or whitespace.</returns>
     private static string? Normalize(string? value)
     {
-        return string.IsNullOrWhiteSpace(value)
-            ? null
-            : value.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return value.Trim();
     }
 }

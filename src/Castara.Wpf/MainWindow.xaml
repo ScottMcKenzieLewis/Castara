@@ -592,10 +592,53 @@
                                            VerticalAlignment="Center"/>
                             </Border>
                         </Grid>
+                        <Button Width="34"
+                Height="28"
+                Margin="10,0,0,0"
+                Padding="0"
+                MinWidth="0"
+                VerticalAlignment="Center"
+                ToolTip="Trigger crash report (debug only)"
+                Command="{Binding CrashTestCommand}"
+                Visibility="{Binding IsDebugBuild, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Style="{StaticResource MaterialDesignToolButton}"
+                Opacity="0.55">
+                            <Button.Resources>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Setter Property="Foreground" Value="#D6D6D6"/>
+                                    <Setter Property="Width" Value="18"/>
+                                    <Setter Property="Height" Value="18"/>
+                                </Style>
+                            </Button.Resources>
+
+                            <Button.Triggers>
+                                <EventTrigger RoutedEvent="MouseEnter">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             To="1"
+                                             Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                                <EventTrigger RoutedEvent="MouseLeave">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                             To="0.55"
+                                             Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Button.Triggers>
+
+                            <materialDesign:PackIcon Kind="AlertOutline"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
         </Grid>
+        
 
         <materialDesign:DialogHost.DialogContent>
             <views:LogViewerView DataContext="{Binding LogViewerViewModel}"/>

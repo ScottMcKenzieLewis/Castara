@@ -1,8 +1,10 @@
 ﻿using Castara.Application.Abstractions.Repositories;
 using Castara.Domain.Estimation.Models.Inputs;
 using Castara.Domain.Exceptions;
-using Castara.Wpf.Diagnostics.CrashReport.Abstractions;
+using Castara.Wpf.Diagnostics.CrashReport;
+using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using Castara.Wpf.Infrastructure.Abstractions;
+using Castara.Wpf.Infrastructure.Commands;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
@@ -14,6 +16,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Castara.Wpf.ViewModels;
@@ -32,6 +35,13 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     private readonly ICastingProfileRepository _castingProfileRepository;
     private readonly IApplicationStateSnapshotService _applicationStateSnapshotService;
     private readonly ILogger<ShellViewModel> _logger;
+
+#if DEBUG
+    /// <summary>
+    /// Gets the command to perform cast iron estimation calculations.
+    /// </summary>
+    public ICommand CrashTestCommand { get; }
+#endif
 
     private bool _isDarkMode;
     private object? _currentViewModel;
@@ -110,12 +120,20 @@ public sealed class ShellViewModel : INotifyPropertyChanged
         // Set the placeholder as the initial selection
         SelectedCastingProfileOption = CastingProfileOptions[0];
 
-        _applicationStateSnapshotService.SetActiveView(CurrentViewModel.GetType().Name);
-        _applicationStateSnapshotService.SetTheme(IsDarkMode ? "Dark" : "Light");
-        _applicationStateSnapshotService.SetSelectedCastingProfile(null);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.ActiveView, CurrentViewModel.GetType().Name);
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.Theme, IsDarkMode ? "Dark" : "Light");
+        _applicationStateSnapshotService.SetValue(ApplicationStateKeys.UnitSystem, UnitSystem.ToString());
 
         // Display initial status message
         _statusService.Set(AppStatusLevel.Ok, "Ready", "Select a casting profile");
+
+#if DEBUG
+        CrashTestCommand = new RelayCommand(() =>
+        {
+            throw new InvalidOperationException("Intentional crash test.");
+        });
+#endif
+
     }
 
     /// <summary>
@@ -145,7 +163,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
                 return;
 
             _currentViewModel = value;
-            _applicationStateSnapshotService.SetActiveView(value?.GetType().Name);
+            _applicationStateSnapshotService.SetValue(ApplicationStateKeys.ActiveView, value?.GetType().Name);
             Notify(nameof(CurrentViewModel));
         }
     }
@@ -215,7 +233,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
 
             _selectedCastingProfile = value;
 
-            _applicationStateSnapshotService.SetSelectedCastingProfile(
+            _applicationStateSnapshotService.SetValue(ApplicationStateKeys.CastingProfile,
                 value?.DisplayName);
 
             // Notify dependent properties that derive from the selected profile
@@ -289,6 +307,7 @@ public sealed class ShellViewModel : INotifyPropertyChanged
                 return;
 
             _unitSystem = value;
+            _applicationStateSnapshotService.SetValue(ApplicationStateKeys.UnitSystem, _unitSystem.ToString());
 
             // Propagate unit system change to view models that display unit-sensitive values
             _unitAware.UnitSystem = value;
@@ -417,4 +436,17 @@ public sealed class ShellViewModel : INotifyPropertyChanged
     /// <param name="name">The name of the property that changed.</param>
     private void Notify(string name)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public bool IsDebugBuild
+    {
+        get
+        {
+#if DEBUG
+            return true;
+#else
+        return false;
+#endif
+        }
+    }
+
 }
