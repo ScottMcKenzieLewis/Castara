@@ -170,18 +170,190 @@ public static class WebApplicationBuilderExtensions
         return builder;
     }
 
+    /// <summary>
+    /// Configures the Kestrel web server's request headers timeout to prevent slow header attacks.
+    /// </summary>
+    /// <param name="builder">The web application builder to configure.</param>
+    /// <returns>The web application builder for method chaining.</returns>
+    /// <remarks>
+    /// This method configures the maximum time allowed for receiving HTTP request headers from clients.
+    /// Setting a timeout helps protect the server from:
+    /// <list type="bullet">
+    /// <item><description><b>Slowloris attacks</b>: Malicious clients sending headers very slowly to exhaust server resources</description></item>
+    /// <item><description><b>Connection exhaustion</b>: Slow clients keeping connections open indefinitely</description></item>
+    /// <item><description><b>Network issues</b>: Hung or misbehaving clients with poor connectivity</description></item>
+    /// <item><description><b>Resource leaks</b>: Connections waiting forever for complete headers</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Configuration:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Timeout</b>: 10 seconds to receive all request headers</description></item>
+    /// <item><description><b>Scope</b>: Applies to all HTTP/1.1 and HTTP/2 requests</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Behavior when timeout exceeded:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Kestrel closes the connection immediately</description></item>
+    /// <item><description>No HTTP response is sent (connection is terminated)</description></item>
+    /// <item><description>Connection resources are immediately released</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Typical header sizes and times:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Normal request headers: 0.5-2 KB (milliseconds to transmit)</description></item>
+    /// <item><description>Crash report request headers: 2-4 KB with HMAC signature (still milliseconds)</description></item>
+    /// <item><description>10-second timeout provides significant margin for slow networks</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Why 10 seconds:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Generous allowance for slow mobile/satellite connections</description></item>
+    /// <item><description>Prevents legitimate requests from timing out</description></item>
+    /// <item><description>Short enough to quickly reject malicious slow-header attacks</description></item>
+    /// <item><description>Matches industry best practices (5-30 seconds typical range)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Relationship to request timeout:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Request headers timeout</b>: Time to receive headers (this setting)</description></item>
+    /// <item><description><b>Request timeout</b>: Time to process entire request including body (configured in <see cref="ServiceCollectionExtensions.ConfigureRequestTimeouts"/>)</description></item>
+    /// </list>
+    /// 
+    /// This method is called from Program.cs before building the application:
+    /// <code>
+    /// builder.ConfigureRequestHeadersTimeout();
+    /// </code>
+    /// </remarks>
     public static WebApplicationBuilder ConfigureRequestHeadersTimeout(this WebApplicationBuilder builder)
     {
         builder.WebHost.ConfigureKestrel(options =>
         {
+            // Set maximum time to receive request headers to 10 seconds
+            // Protects against slowloris attacks and connection exhaustion
             options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
         });
 
         return builder;
     }
 
+    /// <summary>
+    /// Registers and binds crash report ingestion configuration options from appsettings.json.
+    /// </summary>
+    /// <param name="builder">The web application builder to configure.</param>
+    /// <returns>The web application builder for method chaining.</returns>
+    /// <remarks>
+    /// This method configures the <see cref="CrashReportIngestionOptions"/> by binding values from
+    /// the "CrashReportIngestion" section of appsettings.json, making them available throughout
+    /// the application via dependency injection.
+    /// 
+    /// <para>
+    /// <b>Configuration structure (appsettings.json):</b>
+    /// </para>
+    /// <code>
+    /// "CrashReportIngestion": {
+    ///   "Enabled": true,
+    ///   "AllowedClockSkewMinutes": 5,
+    ///   "HmacKeys": {
+    ///     "castara-wpf-v1": "your-secret-key-here-min-32-chars"
+    ///   }
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Configuration properties:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <term>Enabled (bool)</term>
+    /// <description>Master switch for crash report ingestion. When false, all crash report submissions
+    /// receive HTTP 503 (Service Unavailable). Useful for maintenance windows or disabling the feature.</description>
+    /// </item>
+    /// <item>
+    /// <term>AllowedClockSkewMinutes (int)</term>
+    /// <description>Maximum allowed clock skew for HMAC signature timestamp validation (typically 5 minutes).
+    /// Prevents replay attacks while accommodating minor clock differences between client and server.</description>
+    /// </item>
+    /// <item>
+    /// <term>HmacKeys (Dictionary&lt;string, string&gt;)</term>
+    /// <description>Mapping of key IDs to shared secrets for HMAC-SHA256 signature validation.
+    /// Supports key rotation by maintaining multiple active keys. Key IDs are sent in the
+    /// X-Castara-Key-Id header by clients.</description>
+    /// </item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Usage in services:</b>
+    /// </para>
+    /// <code>
+    /// public class CrashReportHmacValidationMiddleware
+    /// {
+    ///     public CrashReportHmacValidationMiddleware(
+    ///         IOptions&lt;CrashReportIngestionOptions&gt; options)
+    ///     {
+    ///         var config = options.Value;
+    ///         if (!config.Enabled) { /* reject request */ }
+    ///         var secret = config.HmacKeys[keyId];
+    ///     }
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Security considerations:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Secret storage</b>: Store HMAC keys in Azure Key Vault or AWS Secrets Manager in production</description></item>
+    /// <item><description><b>Key rotation</b>: Add new keys before removing old ones to avoid downtime</description></item>
+    /// <item><description><b>Key length</b>: Use minimum 32-character secrets (256 bits) for HMAC-SHA256</description></item>
+    /// <item><description><b>Environment separation</b>: Use different keys for development, staging, and production</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Environment-specific configuration:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Development</b>: appsettings.Development.json - Simple keys, ingestion enabled</description></item>
+    /// <item><description><b>Production</b>: Environment variables override appsettings.json - Secrets from Key Vault</description></item>
+    /// <item><description><b>Testing</b>: appsettings.Testing.json - Ingestion disabled (use NullCrashReportStorageService)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Key rotation example:</b>
+    /// </para>
+    /// <code>
+    /// // Step 1: Add new key while keeping old one
+    /// "HmacKeys": {
+    ///   "castara-wpf-v1": "old-secret-key",
+    ///   "castara-wpf-v2": "new-secret-key"
+    /// }
+    /// 
+    /// // Step 2: Update clients to use v2
+    /// // Step 3: Remove v1 after grace period
+    /// "HmacKeys": {
+    ///   "castara-wpf-v2": "new-secret-key"
+    /// }
+    /// </code>
+    /// 
+    /// This method is called from Program.cs before service registration:
+    /// <code>
+    /// builder.AddCrashReportIngestionOptions();
+    /// </code>
+    /// 
+    /// This ensures configuration is available to all services that depend on crash report settings.
+    /// </remarks>
     public static WebApplicationBuilder AddCrashReportIngestionOptions(this WebApplicationBuilder builder)
     {
+        // Bind the "CrashReportIngestion" configuration section to CrashReportIngestionOptions
+        // Makes options available via IOptions<CrashReportIngestionOptions> in DI container
         builder.Services.Configure<CrashReportIngestionOptions>(
             builder.Configuration.GetSection(CrashReportIngestionOptions.SectionName));
 

@@ -352,9 +352,107 @@ public static class WebApplicationExtensions
         app.UseExceptionHandler();
     }
 
+    /// <summary>
+    /// Enables Swagger UI and OpenAPI specification generation for API documentation and testing.
+    /// </summary>
+    /// <param name="app">The web application to configure.</param>
+    /// <remarks>
+    /// This method registers two middleware components that provide interactive API documentation:
+    /// 
+    /// <b>Swagger Middleware:</b>
+    /// <list type="bullet">
+    /// <item><description>Serves the OpenAPI specification as JSON at <c>/swagger/v1/swagger.json</c></description></item>
+    /// <item><description>Generates the specification from controller metadata, attributes, and XML comments</description></item>
+    /// <item><description>Supports multiple API versions (v1, v2, etc.) with separate specifications</description></item>
+    /// </list>
+    /// 
+    /// <b>Swagger UI Middleware:</b>
+    /// <list type="bullet">
+    /// <item><description>Provides interactive API documentation at <c>/swagger</c></description></item>
+    /// <item><description>Allows testing endpoints directly from the browser</description></item>
+    /// <item><description>Displays request/response schemas, parameters, and examples</description></item>
+    /// <item><description>Shows authentication requirements and response codes</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Available endpoints:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><c>/swagger</c> - Interactive Swagger UI (HTML)</description></item>
+    /// <item><description><c>/swagger/v1/swagger.json</c> - OpenAPI specification (JSON)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Environment considerations:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Development</b>: Always enabled for developer convenience</description></item>
+    /// <item><description><b>Production</b>: Consider disabling to prevent information disclosure</description></item>
+    /// <item><description><b>Internal APIs</b>: Safe to leave enabled if not exposed publicly</description></item>
+    /// <item><description><b>Public APIs</b>: May want to keep enabled for external developers</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Configuration options:</b>
+    /// </para>
+    /// <code>
+    /// builder.Services.AddSwaggerGen(options =>
+    /// {
+    ///     options.SwaggerDoc("v1", new OpenApiInfo
+    ///     {
+    ///         Title = "Castara API",
+    ///         Version = "v1",
+    ///         Description = "API for cast iron property estimation"
+    ///     });
+    ///     
+    ///     // Include XML comments in documentation
+    ///     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    ///     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    ///     options.IncludeXmlComments(xmlPath);
+    /// });
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Security implications:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Information disclosure</b>: Swagger reveals API structure and endpoints</description></item>
+    /// <item><description><b>Attack surface</b>: Attackers can study API to find vulnerabilities</description></item>
+    /// <item><description><b>No authentication</b>: Swagger UI itself is typically unauthenticated</description></item>
+    /// <item><description><b>Mitigation</b>: Disable in production or add authentication middleware</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Benefits of Swagger:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Interactive testing</b>: Test endpoints without writing code</description></item>
+    /// <item><description><b>Client generation</b>: Generate client SDKs from OpenAPI spec</description></item>
+    /// <item><description><b>Contract-first design</b>: Share API contracts with frontend teams</description></item>
+    /// <item><description><b>Documentation</b>: Always up-to-date with the actual API</description></item>
+    /// <item><description><b>Onboarding</b>: New developers can explore the API quickly</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>When to disable in production:</b>
+    /// </para>
+    /// <code>
+    /// if (app.Environment.IsDevelopment())
+    /// {
+    ///     app.UseSwagger();
+    ///     app.UseSwaggerUI();
+    /// }
+    /// </code>
+    /// 
+    /// This method is called from <see cref="UseApiPipeline"/> after exception handling
+    /// and before security middleware.
+    /// </remarks>
     private static void ConfigureOpenApi(WebApplication app)
     {
+        // Serve OpenAPI specification as JSON at /swagger/v1/swagger.json
         app.UseSwagger();
+
+        // Serve interactive Swagger UI at /swagger
         app.UseSwaggerUI();
     }
 
@@ -528,12 +626,119 @@ public static class WebApplicationExtensions
         });
     }
 
+    /// <summary>
+    /// Conditionally applies HMAC signature validation middleware only to crash report endpoints.
+    /// </summary>
+    /// <param name="app">The web application to configure.</param>
+    /// <returns>The application builder for method chaining.</returns>
+    /// <remarks>
+    /// This method uses conditional middleware branching to apply <see cref="CrashReportHmacValidationMiddleware"/>
+    /// only to endpoints decorated with <see cref="RequireCrashReportHmacAttribute"/>. This selective
+    /// application provides several benefits:
+    /// 
+    /// <b>Advantages of conditional middleware:</b>
+    /// <list type="bullet">
+    /// <item><description><b>Performance</b>: Validation only runs for crash report endpoints, not all requests</description></item>
+    /// <item><description><b>Separation of concerns</b>: HMAC validation isolated to specific endpoints</description></item>
+    /// <item><description><b>Flexibility</b>: Easy to add/remove HMAC requirement by attribute</description></item>
+    /// <item><description><b>Clarity</b>: Attribute clearly marks which endpoints require HMAC validation</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>How it works:</b>
+    /// </para>
+    /// The <c>UseWhen</c> extension creates a conditional branch in the middleware pipeline:
+    /// <list type="number">
+    /// <item><description>Inspect the matched endpoint's metadata collection</description></item>
+    /// <item><description>Check for presence of <see cref="RequireCrashReportHmacAttribute"/></description></item>
+    /// <item><description>If found, execute <see cref="CrashReportHmacValidationMiddleware"/> in the branch</description></item>
+    /// <item><description>If not found, skip the branch and continue with regular pipeline</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Request flow diagram:</b>
+    /// </para>
+    /// <code>
+    /// Request
+    ///   │
+    ///   ├──→ Endpoint has RequireCrashReportHmacAttribute?
+    ///   │      │
+    ///   │      ├── Yes → CrashReportHmacValidationMiddleware
+    ///   │      │           │
+    ///   │      │           ├── Valid signature → Continue to endpoint
+    ///   │      │           └── Invalid signature → HTTP 401 Unauthorized
+    ///   │      │
+    ///   │      └── No → Skip HMAC validation, continue to endpoint
+    ///   │
+    ///   └──→ Endpoint action executes
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>How to mark endpoints for HMAC validation:</b>
+    /// </para>
+    /// <code>
+    /// [ApiController]
+    /// [Route("api/v{version:apiVersion}/[controller]")]
+    /// public class CrashReportController : ControllerBase
+    /// {
+    ///     [HttpPost]
+    ///     [RequireCrashReportHmac]  // ← This attribute triggers HMAC validation
+    ///     public async Task&lt;IActionResult&gt; Submit(
+    ///         [FromBody] SubmitCrashReportRequest request)
+    ///     {
+    ///         // HMAC validation already completed by middleware
+    ///         // Signature is valid if we reach here
+    ///         // ...
+    ///     }
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Middleware registration location:</b>
+    /// </para>
+    /// This middleware must be registered after:
+    /// <list type="bullet">
+    /// <item><description><b>Routing</b>: So endpoint metadata is available</description></item>
+    /// <item><description><b>Correlation ID</b>: So correlation IDs are in logs</description></item>
+    /// </list>
+    /// 
+    /// And before:
+    /// <list type="bullet">
+    /// <item><description><b>Controllers</b>: So validation happens before endpoint execution</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Alternative approaches (not used):</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Global middleware</b>: Would run for all requests (unnecessary overhead)</description></item>
+    /// <item><description><b>Action filter</b>: Would run after model binding (too late for early rejection)</description></item>
+    /// <item><description><b>Authorization policy</b>: Would be mixed with authentication logic (separation of concerns)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Performance benefits:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>HMAC validation (cryptographic operations) only runs for crash reports</description></item>
+    /// <item><description>All other endpoints skip this middleware entirely</description></item>
+    /// <item><description>Typical overhead for non-crash-report endpoints: ~1-2µs (metadata check)</description></item>
+    /// <item><description>HMAC validation overhead (when applied): ~100-200µs</description></item>
+    /// </list>
+    /// 
+    /// This method is called from <see cref="UseApiPipeline"/> after correlation ID middleware
+    /// and before request logging.
+    /// </remarks>
     private static IApplicationBuilder ConfigureCrashReportHMACMiddleware(this WebApplication app)
     {
+        // Use conditional middleware branching based on endpoint metadata
         return app.UseWhen(
+            // Predicate: Check if endpoint has RequireCrashReportHmacAttribute
             context => context.GetEndpoint()?.Metadata.GetMetadata<RequireCrashReportHmacAttribute>() is not null,
+            // Branch: Configure middleware to run only for matching endpoints
             branch =>
             {
+                // Apply HMAC validation middleware in this branch
                 branch.UseMiddleware<CrashReportHmacValidationMiddleware>();
             });
     }

@@ -271,20 +271,65 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers application-specific services including exception handlers, validators, 
+    /// and crash report processing services.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    /// <remarks>
+    /// This method registers the following services:
+    /// <list type="bullet">
+    /// <item>
+    /// <term>Problem Details (Scoped)</term>
+    /// <description>RFC 7807 problem details support for standardized error responses across the API</description>
+    /// </item>
+    /// <item>
+    /// <term>Global Exception Handler (Scoped)</term>
+    /// <description>Catches unhandled exceptions and converts them to RFC 7807 problem details responses</description>
+    /// </item>
+    /// <item>
+    /// <term>Validation Error Response Factory (Scoped)</term>
+    /// <description>Creates consistent validation error responses following RFC 7807 format</description>
+    /// </item>
+    /// <item>
+    /// <term>Crash Report Request Signature Validator (Scoped)</term>
+    /// <description>Validates HMAC-SHA256 signatures on crash report submissions to ensure authenticity</description>
+    /// </item>
+    /// <item>
+    /// <term>Crash Report Sanitizer (Scoped)</term>
+    /// <description>Server-side sanitization of crash reports to redact file paths and usernames (defense-in-depth)</description>
+    /// </item>
+    /// <item>
+    /// <term>Crash Report Storage Service (Scoped)</term>
+    /// <description>Default implementation is <see cref="NullCrashReportStorageService"/> (Null Object Pattern).
+    /// Replace with a concrete implementation for actual persistence (database, file system, cloud storage)</description>
+    /// </item>
+    /// </list>
+    /// 
+    /// <para>
+    /// Most services are registered with <b>Scoped</b> lifetime, meaning a new instance is created
+    /// per HTTP request. This ensures proper isolation and prevents state leaking between requests.
+    /// </para>
+    /// </remarks>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         // Register RFC 7807 problem details for standardized error responses
         services.AddProblemDetails();
-        
+
         // Register global exception handler for unhandled exceptions
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
+        // Register validation error response factory
         services.AddScoped<IValidationErrorResponseFactory, ValidationErrorResponseFactory>();
 
+        // Register HMAC signature validator for crash report authentication
         services.AddScoped<ICrashReportRequestSignatureValidator, CrashReportRequestSignatureValidator>();
 
+        // Register crash report sanitizer for defense-in-depth privacy protection
         services.AddScoped<ICrashReportSanitizer, CrashReportSanitizer>();
 
+        // Register Null Object Pattern storage service (replace with real implementation for production)
         services.AddScoped<ICrashReportStorageService, NullCrashReportStorageService>();
 
         return services;
@@ -327,17 +372,57 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Configures request timeout policies to prevent long-running requests from consuming resources.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    /// <remarks>
+    /// Request timeouts help protect the API from:
+    /// <list type="bullet">
+    /// <item><description>Slow or unresponsive clients</description></item>
+    /// <item><description>Network connectivity issues</description></item>
+    /// <item><description>Resource exhaustion from long-running operations</description></item>
+    /// <item><description>Denial-of-service scenarios</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Default Policy:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Timeout: 10 seconds</description></item>
+    /// <item><description>Status Code: HTTP 408 (Request Timeout)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Named Policies:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <term>CrashReportIngest</term>
+    /// <description>10-second timeout for crash report submission endpoints.
+    /// Ensures timely responses even for large crash reports with extensive logs.</description>
+    /// </item>
+    /// </list>
+    /// 
+    /// Apply named policies to controllers or actions using:
+    /// <code>
+    /// [RequestTimeout("CrashReportIngest")]
+    /// public async Task&lt;IActionResult&gt; SubmitCrashReport(...)
+    /// </code>
+    /// </remarks>
     public static IServiceCollection ConfigureRequestTimeouts(this IServiceCollection services)
     {
-        // Register health check services (basic infrastructure)
         services.AddRequestTimeouts(options =>
         {
+            // Default timeout policy for all requests
             options.DefaultPolicy = new RequestTimeoutPolicy
             {
                 Timeout = TimeSpan.FromSeconds(10),
                 TimeoutStatusCode = StatusCodes.Status408RequestTimeout
             };
 
+            // Named timeout policy for crash report ingestion
             options.AddPolicy("CrashReportIngest", new RequestTimeoutPolicy
             {
                 Timeout = TimeSpan.FromSeconds(10),
