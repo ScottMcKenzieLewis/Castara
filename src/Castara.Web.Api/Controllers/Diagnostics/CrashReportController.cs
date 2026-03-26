@@ -295,7 +295,7 @@ public sealed class CrashReportsController : ControllerBase
         if (!validationResult.IsValid)
         {
             _logger.LogWarning(
-                "Validation failed for bond valuation request. TraceId: {TraceId}",
+                "Validation failed for submit crash report request. TraceId: {TraceId}",
                 HttpContext.TraceIdentifier);
             return _validationErrorResponseFactory.Create(validationResult, HttpContext.TraceIdentifier);
         }
