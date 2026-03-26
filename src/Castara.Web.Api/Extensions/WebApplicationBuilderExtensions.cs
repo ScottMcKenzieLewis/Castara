@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Castara.Api.Configuration;
+using Serilog;
 
 namespace Castara.Api.Extensions;
 
@@ -150,16 +151,16 @@ public static class WebApplicationBuilderExtensions
                 // This includes: minimum log levels, sinks, enrichers, and properties
                 // Configuration section: "Serilog"
                 .ReadFrom.Configuration(context.Configuration)
-                
+
                 // Enable Serilog to access registered services for dependency injection
                 // Allows custom enrichers and sinks to resolve services from DI container
                 .ReadFrom.Services(services)
-                
+
                 // Enrich logs with properties from log scopes (BeginScope)
                 // Captures CorrelationId, TraceId, Method, Path from middleware
                 // Essential for distributed tracing and request correlation
                 .Enrich.FromLogContext()
-                
+
                 // Add hosting environment name (Development, Production, Testing) to all logs
                 // Essential for filtering logs by environment in centralized logging systems
                 // Helps distinguish logs when multiple environments write to the same destination
@@ -168,4 +169,23 @@ public static class WebApplicationBuilderExtensions
 
         return builder;
     }
+
+    public static WebApplicationBuilder ConfigureRequestHeadersTimeout(this WebApplicationBuilder builder)
+    {
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
+        });
+
+        return builder;
+    }
+
+    public static WebApplicationBuilder AddCrashReportIngestionOptions(this WebApplicationBuilder builder)
+    {
+        builder.Services.Configure<CrashReportIngestionOptions>(
+            builder.Configuration.GetSection(CrashReportIngestionOptions.SectionName));
+
+        return builder;
+    }
+
 }

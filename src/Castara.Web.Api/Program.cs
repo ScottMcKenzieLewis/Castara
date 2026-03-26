@@ -23,6 +23,10 @@ var builder = WebApplication.CreateBuilder(args);
 // See: WebApplicationBuilderExtensions.cs for logging configuration details
 builder.ConfigureLogging();
 
+builder.ConfigureRequestHeadersTimeout();
+
+builder.AddCrashReportIngestionOptions();
+
 // Register application services (DI container configuration)
 // Includes: Controllers, validators, mappers, AutoMapper, FluentValidation, etc.
 // See: ServiceCollectionExtensions.cs for service registration details

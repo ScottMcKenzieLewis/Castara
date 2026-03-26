@@ -1,13 +1,16 @@
 ﻿using Asp.Versioning;
 using Castara.Api.Configuration;
+using Castara.Api.Diagnostics.Services;
 using Castara.Api.Dtos;
 using Castara.Api.Dtos.Responses;
 using Castara.Api.Exceptions;
+using Castara.Api.Services.Diagnostics;
 using Castara.Diagnostics.Api.Services.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics.Requests;
 using Castara.Web.Api.Services.Diagnostics;
 using FluentValidation;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
@@ -94,6 +97,7 @@ public static class ServiceCollectionExtensions
         // Register organized service groups
         services.AddApiVersioning();
         services.AddRateLimiting(configuration);
+        services.ConfigureRequestTimeouts();
         services.AddOpenApi();
         services.AddApplicationServices();
         services.AddHealthChecks();
@@ -277,6 +281,10 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IValidationErrorResponseFactory, ValidationErrorResponseFactory>();
 
+        services.AddScoped<ICrashReportRequestSignatureValidator, CrashReportRequestSignatureValidator>();
+
+        services.AddScoped<ICrashReportSanitizer, CrashReportSanitizer>();
+
         services.AddScoped<ICrashReportStorageService, NullCrashReportStorageService>();
 
         return services;
@@ -319,9 +327,29 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection ConfigureRequestTimeouts(this IServiceCollection services)
+    {
+        // Register health check services (basic infrastructure)
+        services.AddRequestTimeouts(options =>
+        {
+            options.DefaultPolicy = new RequestTimeoutPolicy
+            {
+                Timeout = TimeSpan.FromSeconds(10),
+                TimeoutStatusCode = StatusCodes.Status408RequestTimeout
+            };
+
+            options.AddPolicy("CrashReportIngest", new RequestTimeoutPolicy
+            {
+                Timeout = TimeSpan.FromSeconds(10),
+                TimeoutStatusCode = StatusCodes.Status408RequestTimeout
+            });
+        });
+
+        return services;
+    }
+
     public static IServiceCollection AddValidators(this IServiceCollection services)
     {
-        // Register FluentValidation validators (scoped lifetime)
         services.AddScoped<IValidator<SubmitCrashReportRequest>, SubmitCrashReportRequestValidator>();
         services.AddScoped<IValidator<CrashReportDto>, CrashReportDtoValidator>();
         services.AddScoped<IValidator<CrashExceptionInfoDto>, CrashExceptionInfoDtoValidator>();
@@ -329,4 +357,5 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
 }

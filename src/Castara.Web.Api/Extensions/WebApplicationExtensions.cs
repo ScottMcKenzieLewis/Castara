@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using Castara.Api.Configuration;
+using Castara.Api.Health;
+using Castara.Api.Middleware;
+using Castara.Api.Middleware.Diagnostics;
+using Castara.Web.Api.Attributes.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
-using Castara.Api.Configuration;
-using Castara.Api.Health;
-using Castara.Api.Middleware;
 
 namespace Castara.Api.Extensions;
 
@@ -113,9 +115,7 @@ public static class WebApplicationExtensions
         // Configured to not suppress diagnostics so exceptions are logged properly
         ConfigureExceptionHandling(app);
 
-        // Development-only tools: Swagger UI and OpenAPI
-        // Only enabled in Development environment for security
-        ConfigureDevelopmentTools(app);
+        ConfigureOpenApi(app);
 
         // HTTPS redirection - Redirect HTTP to HTTPS
         app.UseHttpsRedirection();
@@ -123,12 +123,16 @@ public static class WebApplicationExtensions
         // Security header cleanup - Remove information disclosure headers
         app.UseSecurityHeaderCleanup();
 
+        app.UseRequestTimeouts();
+
         // Rate limiting - Throttle excessive requests
         app.UseRateLimiter();
 
         // Correlation ID - Establish distributed tracing context
         // Must be before logging so correlation IDs appear in logs
         app.UseCorrelationId();
+
+        app.ConfigureCrashReportHMACMiddleware();
 
         // Serilog request logging - Rich structured logging with custom enrichment
         // Replaces RequestLoggingMiddleware with Serilog's optimized implementation
@@ -319,8 +323,6 @@ public static class WebApplicationExtensions
         return app.UseMiddleware<CorrelationIdMiddleware>();
     }
 
-    #region Private Helper Methods
-
     /// <summary>
     /// Configures global exception handling for the application.
     /// </summary>
@@ -350,46 +352,10 @@ public static class WebApplicationExtensions
         app.UseExceptionHandler();
     }
 
-    /// <summary>
-    /// Conditionally enables development tools (Swagger and OpenAPI) based on the hosting environment.
-    /// </summary>
-    /// <param name="app">The web application to configure.</param>
-    /// <remarks>
-    /// Development tools are only enabled when the application is running in the Development environment.
-    /// This ensures that:
-    /// <list type="bullet">
-    /// <item><description>Swagger UI is not exposed in production (security)</description></item>
-    /// <item><description>OpenAPI specification is not publicly accessible (prevents API fingerprinting)</description></item>
-    /// <item><description>Performance overhead of API exploration is avoided in production</description></item>
-    /// </list>
-    /// 
-    /// Enabled endpoints in Development environment:
-    /// <list type="bullet">
-    /// <item><description><c>/openapi/v1.json</c> - OpenAPI specification document</description></item>
-    /// <item><description><c>/swagger</c> - Swagger UI for interactive API documentation</description></item>
-    /// <item><description><c>/swagger/v1/swagger.json</c> - Alternative OpenAPI endpoint</description></item>
-    /// </list>
-    /// 
-    /// In production, API documentation should be:
-    /// <list type="bullet">
-    /// <item><description>Hosted on a separate documentation site</description></item>
-    /// <item><description>Generated during build and published separately</description></item>
-    /// <item><description>Protected behind authentication if sensitive</description></item>
-    /// </list>
-    /// </remarks>
-    private static void ConfigureDevelopmentTools(WebApplication app)
+    private static void ConfigureOpenApi(WebApplication app)
     {
-        // Early return if not in Development environment
-        if (!app.Environment.IsDevelopment())
-        {
-            return;
-        }
-
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+        app.UseSwagger();
+        app.UseSwaggerUI();
     }
 
     /// <summary>
@@ -562,5 +528,14 @@ public static class WebApplicationExtensions
         });
     }
 
-    #endregion
+    private static IApplicationBuilder ConfigureCrashReportHMACMiddleware(this WebApplication app)
+    {
+        return app.UseWhen(
+            context => context.GetEndpoint()?.Metadata.GetMetadata<RequireCrashReportHmacAttribute>() is not null,
+            branch =>
+            {
+                branch.UseMiddleware<CrashReportHmacValidationMiddleware>();
+            });
+    }
+
 }
