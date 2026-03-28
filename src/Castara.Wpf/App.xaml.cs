@@ -3,17 +3,23 @@ using Castara.Application.Mapping;
 using Castara.Application.Repositories;
 using Castara.Domain.Estimation.Services;
 using Castara.Domain.Estimation.Services.Strategies;
+using Castara.Wpf.CrashReport;
+using Castara.Wpf.CrashReport.Interfaces;
 using Castara.Wpf.Diagnostics.CrashReport;
 using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
+using Castara.Wpf.Diagnostics.CrashReport.Upload;
+using Castara.Wpf.Diagnostics.CrashReport.Upload.Interfaces;
+using Castara.Wpf.Diagnostics.Telemetry.Logging;
 using Castara.Wpf.Infrastructure.Abstractions;
-using Castara.Wpf.Infrastructure.Telemetry.Logging;
 using Castara.Wpf.Services.Clipboard;
 using Castara.Wpf.Services.Status;
 using Castara.Wpf.Services.Theme;
 using Castara.Wpf.ViewModels;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
@@ -91,7 +97,7 @@ public partial class App : System.Windows.Application
         _host = Host.CreateDefaultBuilder(e.Args)
             .ConfigureServices((context, services) =>
             {
-                ConfigureServices(services, Dispatcher);
+                ConfigureServices(services, Dispatcher, context.Configuration);
             })
             .ConfigureLogging((context, logging) =>
             {
@@ -210,7 +216,7 @@ public partial class App : System.Windows.Application
     /// automatically trimming oldest entries when exceeded to prevent memory issues.
     /// </para>
     /// </remarks>
-    private static void ConfigureServices(IServiceCollection services, Dispatcher uiDispatcher)
+    private static void ConfigureServices(IServiceCollection services, Dispatcher uiDispatcher, IConfiguration configuration)
     {
         // --------------------
         // WPF UI Thread Dispatcher
@@ -285,7 +291,11 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IApplicationStateSnapshotService, ApplicationStateSnapshotService>();
         services.AddSingleton<ICrashReportBuilder, CrashReportBuilder>();
         services.AddSingleton<ICrashReportWriter, JsonCrashReportWriter>();
-        services.AddSingleton<ICrashDialogService, CrashDialogService>();
+        services.AddSingleton<ICrashReportDialogService, CrashReportDialogService>();
+        services.Configure<CrashReportUploadOptions>(
+            configuration.GetSection(CrashReportUploadOptions.SectionName));
+        services.AddSingleton<ICrashReportUploadMapper, CrashReportUploadMapper>();
+        services.AddHttpClient<ICrashReportUploader, CrashReportUploader>();
         services.AddSingleton<ICrashReportService, CrashReportService>();
     }
 
@@ -327,21 +337,10 @@ public partial class App : System.Windows.Application
         {
             log.LogCritical(e.Exception, "Unhandled UI (Dispatcher) exception");
 
-            try
-            {
-                var crashService = host.Services.GetRequiredService<ICrashReportService>();
-                crashService.HandleFatal(e.Exception, "DispatcherUnhandledException");
-            }
-            catch (Exception crashEx)
-            {
-                log.LogCritical(crashEx, "Failed while handling dispatcher crash report");
-            }
-
-            // Mark handled so WPF does not show its own unhandled exception dialog.
-            // We are terminating explicitly below.
+            // Mark handled immediately, before any await.
             e.Handled = true;
 
-            Current.Shutdown(-1);
+            _ = HandleDispatcherCrashAsync(host, log, e.Exception);
         };
 
         TaskScheduler.UnobservedTaskException += (s, e) =>
@@ -350,7 +349,7 @@ public partial class App : System.Windows.Application
             e.SetObserved();
         };
 
-        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        AppDomain.CurrentDomain.UnhandledException += async (s, e) =>
         {
             if (e.ExceptionObject is Exception ex)
             {
@@ -364,7 +363,7 @@ public partial class App : System.Windows.Application
                     try
                     {
                         var crashService = host.Services.GetRequiredService<ICrashReportService>();
-                        crashService.HandleFatal(ex, "AppDomainUnhandledException");
+                        await crashService.HandleFatalAsync(ex, "AppDomainUnhandledException");
                     }
                     catch (Exception crashEx)
                     {
@@ -379,6 +378,26 @@ public partial class App : System.Windows.Application
                     e.ExceptionObject);
             }
         };
+    }
+
+    private static async Task HandleDispatcherCrashAsync(
+        IHost host,
+        ILogger<App> log,
+        Exception exception)
+    {
+        try
+        {
+            var crashService = host.Services.GetRequiredService<ICrashReportService>();
+            await crashService.HandleFatalAsync(exception, "DispatcherUnhandledException");
+        }
+        catch (Exception crashEx)
+        {
+            log.LogCritical(crashEx, "Failed while handling dispatcher crash report");
+        }
+        finally
+        {
+            Current.Shutdown(-1);
+        }
     }
 
     /// <summary>

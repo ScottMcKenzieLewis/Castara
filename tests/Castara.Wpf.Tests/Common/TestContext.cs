@@ -2,7 +2,7 @@
 using Castara.Domain.Estimation.Services;
 using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using Castara.Wpf.Infrastructure.Abstractions;
-using Castara.Wpf.Infrastructure.Telemetry.Logging;
+using Castara.Wpf.Diagnostics.Telemetry.Logging;
 using Castara.Wpf.Models;
 using Castara.Wpf.Services.Clipboard;
 using Castara.Wpf.Services.Status;

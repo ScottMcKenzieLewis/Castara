@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Linq;
 using System.Windows.Data;
-using Castara.Wpf.Infrastructure.Telemetry.Logging;
+using Castara.Wpf.Diagnostics.Telemetry.Logging;
 using Castara.Wpf.Tests.Common;
 using Castara.Wpf.ViewModels;
 using FluentAssertions;

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Threading;
 
-namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
+namespace Castara.Wpf.Diagnostics.Telemetry.Logging;
 
 /// <summary>
 /// Thread-safe, WPF-friendly log store that marshals changes to the UI thread.

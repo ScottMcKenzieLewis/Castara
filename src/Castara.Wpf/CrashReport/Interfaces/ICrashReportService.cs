@@ -1,4 +1,6 @@
-﻿namespace Castara.Wpf.Diagnostics.CrashReport.Interfaces;
+﻿using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
+
+namespace Castara.Wpf.CrashReport.Interfaces;
 
 /// <summary>
 /// Provides the primary crash reporting service for handling fatal application exceptions.
@@ -72,7 +74,7 @@ public interface ICrashReportService
 {
     /// <summary>
     /// Handles a fatal exception by generating a crash report, saving it to disk,
-    /// and notifying the user.
+    /// and notifying the user asynchronously.
     /// </summary>
     /// <param name="exception">
     /// The unhandled exception that caused the application to crash.
@@ -80,10 +82,14 @@ public interface ICrashReportService
     /// handle null defensively by creating a synthetic exception.
     /// </param>
     /// <param name="source">
-    /// The exception source or handler context (e.g., "App.DispatcherUnhandledException",
-    /// "TaskScheduler.UnobservedTaskException", "MainWindow.OnLoaded").
+    /// The exception source or handler context (e.g., "DispatcherUnhandledException",
+    /// "UnobservedTaskException", "AppDomainUnhandledException").
     /// This helps identify where in the application lifecycle the crash occurred.
     /// </param>
+    /// <returns>
+    /// A <see cref="Task"/> that completes when crash report processing finishes. The task always
+    /// completes successfully even if internal operations fail (graceful degradation).
+    /// </returns>
     /// <remarks>
     /// <para>
     /// This method performs the complete crash reporting workflow:
@@ -95,7 +101,7 @@ public interface ICrashReportService
     ///   </description></item>
     ///   <item><description>
     ///     <strong>Persist</strong> - Serialize crash report to JSON and save to a timestamped
-    ///     file in the crash reports directory (typically AppData/Castara/CrashReports)
+    ///     file in the crash reports directory (typically %LocalAppData%\Castara\CrashReports)
     ///   </description></item>
     ///   <item><description>
     ///     <strong>Notify Success</strong> - If persistence succeeds, call <see cref="ICrashDialogService.ShowCrashReportSaved"/>
@@ -120,20 +126,79 @@ public interface ICrashReportService
     ///   <item><description>If dialog display fails, attempt fallback notification (console output, event log)</description></item>
     /// </list>
     /// <para>
-    /// <strong>Non-Blocking:</strong>
+    /// <strong>Async/Await Behavior:</strong>
     /// </para>
     /// <para>
-    /// This method should complete synchronously and not use async/await, as it may be
-    /// called during application shutdown where async continuations may not execute.
+    /// This method is async to support asynchronous file I/O operations, but implementations
+    /// can complete synchronously using <c>Task.CompletedTask</c> if all operations are synchronous.
+    /// Since this is called during fatal exception handling:
     /// </para>
+    /// <list type="bullet">
+    ///   <item><description>The method should complete all work before returning (no fire-and-forget)</description></item>
+    ///   <item><description>File I/O can use <c>async/await</c> for better performance</description></item>
+    ///   <item><description>UI operations (dialogs) are typically synchronous on the UI thread</description></item>
+    ///   <item><description>The calling code should <c>await</c> this method before shutdown</description></item>
+    /// </list>
+    /// <para>
+    /// <strong>Example implementation pattern:</strong>
+    /// </para>
+    /// <code>
+    /// public async Task HandleFatalAsync(Exception exception, string source)
+    /// {
+    ///     try
+    ///     {
+    ///         // Build crash report (synchronous)
+    ///         var report = _builder.Build(exception, source);
+    ///         
+    ///         // Save to disk (asynchronous file I/O)
+    ///         var path = await _writer.WriteAsync(report);
+    ///         
+    ///         // Show success dialog (synchronous UI operation)
+    ///         _dialogService.ShowCrashReportSaved(path, report.ReportId);
+    ///     }
+    ///     catch
+    ///     {
+    ///         // Show failure dialog (synchronous UI operation)
+    ///         _dialogService.ShowCrashReportFailed("Unable to save crash report.");
+    ///     }
+    /// }
+    /// </code>
+    /// <para>
+    /// <strong>Alternative synchronous completion:</strong>
+    /// </para>
+    /// <code>
+    /// public Task HandleFatalAsync(Exception exception, string source)
+    /// {
+    ///     try
+    ///     {
+    ///         var report = _builder.Build(exception, source);
+    ///         var path = _writer.Write(report); // Synchronous write
+    ///         _dialogService.ShowCrashReportSaved(path, report.ReportId);
+    ///     }
+    ///     catch
+    ///     {
+    ///         _dialogService.ShowCrashReportFailed("Unable to save crash report.");
+    ///     }
+    ///     
+    ///     return Task.CompletedTask; // Synchronous completion
+    /// }
+    /// </code>
     /// <para>
     /// <strong>Application Termination:</strong>
     /// </para>
     /// <para>
     /// After this method completes, the application typically terminates (either through
-    /// <c>Environment.Exit()</c> or natural shutdown). The service should ensure all critical
-    /// data is flushed to disk before returning.
+    /// <c>Environment.Exit()</c> or natural shutdown). The calling code should await this
+    /// method to ensure all crash report operations complete before termination:
     /// </para>
+    /// <code>
+    /// DispatcherUnhandledException += async (s, args) =>
+    /// {
+    ///     await _crashReportService.HandleFatalAsync(args.Exception, "DispatcherUnhandledException");
+    ///     args.Handled = true;
+    ///     Application.Current.Shutdown(1); // Exit with error code
+    /// };
+    /// </code>
     /// </remarks>
-    void HandleFatal(Exception exception, string source);
+    Task HandleFatalAsync(Exception exception, string source);
 }

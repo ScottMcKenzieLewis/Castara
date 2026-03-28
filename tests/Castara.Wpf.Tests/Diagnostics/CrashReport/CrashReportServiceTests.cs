@@ -1,4 +1,6 @@
-﻿using Castara.Wpf.Diagnostics.CrashReport;
+﻿using Castara.Wpf.CrashReport;
+using Castara.Wpf.CrashReport.Interfaces;
+using Castara.Wpf.Diagnostics.CrashReport;
 using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
 using FluentAssertions;
 using Moq;
@@ -19,7 +21,7 @@ public sealed class CrashReportServiceTests
     {
         var builder = new Mock<ICrashReportBuilder>();
         var writer = new Mock<ICrashReportWriter>();
-        var dialog = new Mock<ICrashDialogService>();
+        var dialog = new Mock<ICrashReportDialogService>();
 
         var report = new Castara.Wpf.Diagnostics.CrashReport.CrashReport(
             ReportId: "report-123",
@@ -54,7 +56,7 @@ public sealed class CrashReportServiceTests
     {
         var builder = new Mock<ICrashReportBuilder>();
         var writer = new Mock<ICrashReportWriter>();
-        var dialog = new Mock<ICrashDialogService>();
+        var dialog = new Mock<ICrashReportDialogService>();
 
         var report = new Castara.Wpf.Diagnostics.CrashReport.CrashReport(
             ReportId: "report-123",

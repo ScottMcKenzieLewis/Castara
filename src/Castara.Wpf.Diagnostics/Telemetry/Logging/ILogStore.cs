@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
+namespace Castara.Wpf.Diagnostics.Telemetry.Logging;
 
 /// <summary>
 /// Defines a store for managing application log entries.

@@ -7,9 +7,10 @@
   <Project Path="src/Castara.Domain/Castara.Domain.csproj" />
   <Project Path="src/Castara.Infrastructure/Castara.Infrastructure.csproj" Id="e7c19aaf-f47c-4495-8e43-4a97929f651b" />
   <Project Path="src/Castara.Web.Api/Castara.Web.Api.csproj" Id="403acd76-b3f2-4ff1-b160-b2a81197f483" />
+  <Project Path="src/Castara.Wpf.Diagnostics/Castara.Wpf.Diagnostics.csproj" Id="62ebcfbe-27c6-46ad-8ff8-3aeb0c56dbd4" />
   <Project Path="src/Castara.Wpf/Castara.Wpf.csproj" Id="208ad7a0-6a89-4754-8157-b2e459c57657" />
   <Project Path="tests/Castara.Application.Tests/Castara.Application.Tests.csproj" Id="d61c13b4-f4f1-46c5-aa7e-434eb74e1ffa" />
-  <Project Path="tests/Castara.Domain.Tests/Castara.Domain.Tests.csproj" Id="a441e79d-4282-4f66-91bf-698af24ce2da"/>
+  <Project Path="tests/Castara.Domain.Tests/Castara.Domain.Tests.csproj" Id="a441e79d-4282-4f66-91bf-698af24ce2da" />
   <Project Path="tests/Castara.Web.Api.Tests/Castara.Web.Api.Tests.csproj" Id="0f375556-3ffc-4c34-90e4-edc620b1102f" />
   <Project Path="tests/Castara.Wpf.Tests/Castara.Wpf.Tests.csproj" />
 </Solution>
