@@ -4,6 +4,7 @@ using Castara.Api.Diagnostics.Services;
 using Castara.Api.Dtos;
 using Castara.Api.Dtos.Responses;
 using Castara.Api.Exceptions;
+using Castara.Api.OpenApi;
 using Castara.Api.Services.Diagnostics;
 using Castara.Diagnostics.Api.Services.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics;
@@ -12,6 +13,9 @@ using Castara.Web.Api.Services.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
 using System.Threading.RateLimiting;
 
 namespace Castara.Api.Extensions;
@@ -98,7 +102,7 @@ public static class ServiceCollectionExtensions
         services.AddApiVersioning();
         services.AddRateLimiting(configuration);
         services.ConfigureRequestTimeouts();
-        services.AddOpenApi();
+        services.AddOpenApi(typeof(Program).Assembly);
         services.AddApplicationServices();
         services.AddHealthChecks();
         services.AddValidators();
@@ -146,7 +150,12 @@ public static class ServiceCollectionExtensions
             // Read version from URL segment (e.g., /api/v1/...)
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         })
-        .AddMvc();
+        .AddMvc()
+        .AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'V";
+            options.SubstituteApiVersionInUrl = true;
+        });
 
         return services;
     }
@@ -260,13 +269,24 @@ public static class ServiceCollectionExtensions
     /// <item><description><c>/swagger/v1/swagger.json</c> - OpenAPI specification</description></item>
     /// </list>
     /// </remarks>
-    public static IServiceCollection AddOpenApi(this IServiceCollection services)
+    public static IServiceCollection AddOpenApi(this IServiceCollection services,
+        Assembly apiAssembly)
     {
         // Register API Explorer for metadata generation
         services.AddEndpointsApiExplorer();
-        
+        services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
+
         // Register Swagger documentation generator
-        services.AddSwaggerGen();
+        services.AddSwaggerGen(options =>
+        {
+            var xmlFile = $"{apiAssembly.GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+
+            if (File.Exists(xmlPath))
+            {
+                options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+            }
+        });
         
         return services;
     }
