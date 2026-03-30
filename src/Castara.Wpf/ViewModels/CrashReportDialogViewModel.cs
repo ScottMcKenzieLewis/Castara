@@ -1,5 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Castara.Wpf.Diagnostics.CrashReport.Upload;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Options;
 
 namespace Castara.Wpf.Diagnostics.CrashReport;
 
@@ -158,6 +160,11 @@ public partial class CrashReportDialogViewModel : ObservableObject
     [ObservableProperty]
     private bool saveLocally = true; // Default: save locally by default
 
+    public bool IsCrashReportUploadEnabled { get; }
+
+    public string SubmitButtonText =>
+        IsCrashReportUploadEnabled ? "Send and Close" : "Close";
+
     /// <summary>
     /// Initializes a new instance of the <see cref="CrashReportDialogViewModel"/> class.
     /// </summary>
@@ -171,10 +178,11 @@ public partial class CrashReportDialogViewModel : ObservableObject
     /// The <paramref name="reportJson"/> and <paramref name="reportId"/> are set to read-only
     /// properties and cannot be changed after construction.
     /// </remarks>
-    public CrashReportDialogViewModel(string reportJson, string reportId)
+    public CrashReportDialogViewModel(string reportJson, string reportId, bool isCrashReportUploadEnabled)
     {
         ReportJson = reportJson ?? throw new ArgumentNullException(nameof(reportJson));
         ReportId = reportId ?? throw new ArgumentNullException(nameof(reportId));
+        IsCrashReportUploadEnabled = isCrashReportUploadEnabled;
 
         CloseCommand = new RelayCommand(Close);
         ContinueCommand = new RelayCommand(Continue);

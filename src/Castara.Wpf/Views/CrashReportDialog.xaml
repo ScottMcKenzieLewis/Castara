@@ -15,6 +15,10 @@
         Background="#11161B"
         Foreground="#E6E6E6">
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+    
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -112,7 +116,8 @@
                         VerticalAlignment="Center">
                 <CheckBox Content="Send diagnostic report for analysis"
                           IsChecked="{Binding SendReport}"
-                          Margin="0,0,0,8"/>
+                          Margin="0,0,0,8"
+                          Visibility="{Binding IsCrashReportUploadEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <CheckBox Content="Save a local copy of the report"
                           IsChecked="{Binding SaveLocally}"/>
             </StackPanel>
@@ -120,12 +125,13 @@
             <StackPanel Grid.Column="1"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right">
-                <Button Content="Close Without Sending"
+                <Button Content="{Binding SubmitButtonText}"
                         Command="{Binding CloseCommand}"
                         Margin="0,0,10,0"
                         MinWidth="90"/>
                 <Button Content="Send and Close"
                         Command="{Binding ContinueCommand}"
+                        Visibility="{Binding IsCrashReportUploadEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"
                         MinWidth="110"/>
             </StackPanel>
         </Grid>

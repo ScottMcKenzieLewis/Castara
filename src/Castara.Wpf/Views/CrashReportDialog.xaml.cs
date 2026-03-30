@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Input;
 using Castara.Wpf.Services.Clipboard;
 
 namespace Castara.Wpf.Diagnostics.CrashReport;

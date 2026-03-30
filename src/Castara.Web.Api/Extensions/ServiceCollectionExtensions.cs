@@ -238,36 +238,56 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Configures OpenAPI (Swagger) documentation generation and AutoMapper for DTO mappings.
+    /// Configures OpenAPI (Swagger) documentation generation for the API.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
+    /// <param name="apiAssembly">The assembly containing the API controllers and XML documentation.</param>
     /// <returns>The service collection for method chaining.</returns>
     /// <remarks>
-    /// This method registers services for:
+    /// This method registers services for OpenAPI/Swagger documentation:
     /// <list type="bullet">
-    /// <item><description><b>API Explorer</b>: Generates API metadata for Swagger</description></item>
-    /// <item><description><b>Swagger Generator</b>: Creates OpenAPI specification documents</description></item>
-    /// <item><description><b>AutoMapper</b>: Maps between domain objects and DTOs</description></item>
+    /// <item>
+    /// <term>API Explorer</term>
+    /// <description>Generates API metadata by discovering endpoints, parameters, and response types</description>
+    /// </item>
+    /// <item>
+    /// <term>Swagger Options Configuration</term>
+    /// <description><see cref="ConfigureSwaggerOptions"/> provides version-aware Swagger document configuration
+    /// including title, description, and API version information</description>
+    /// </item>
+    /// <item>
+    /// <term>Swagger Generator</term>
+    /// <description>Creates OpenAPI 3.0 specification documents from API metadata with XML documentation comments</description>
+    /// </item>
     /// </list>
     /// 
-    /// AutoMapper scans the assembly containing <see cref="Program"/> for:
+    /// <para>
+    /// <b>XML Documentation Integration:</b>
+    /// </para>
+    /// The method automatically includes XML documentation comments from the API assembly if available.
+    /// This enriches the Swagger UI with detailed descriptions, parameter information, and example values
+    /// from /// comments in controller classes and action methods.
+    /// 
+    /// <para>
+    /// To enable XML documentation generation, ensure the project file includes:
+    /// </para>
+    /// <code>
+    /// &lt;PropertyGroup&gt;
+    ///   &lt;GenerateDocumentationFile&gt;true&lt;/GenerateDocumentationFile&gt;
+    /// &lt;/PropertyGroup&gt;
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Swagger UI Endpoints:</b>
+    /// </para>
     /// <list type="bullet">
-    /// <item><description>Classes inheriting from <c>Profile</c></description></item>
-    /// <item><description>Mapping configurations between domain and DTO types</description></item>
+    /// <item><description><c>/swagger</c> - Interactive API documentation and testing interface</description></item>
+    /// <item><description><c>/swagger/v1/swagger.json</c> - OpenAPI 3.0 specification document for API v1</description></item>
+    /// <item><description><c>/swagger/v2/swagger.json</c> - OpenAPI specification for future API versions</description></item>
     /// </list>
     /// 
-    /// Examples of mapped types:
-    /// <list type="bullet">
-    /// <item><description>DateOnly ↔ LocalDate (NodaTime)</description></item>
-    /// <item><description>ValuationResult&lt;Bond&gt; ↔ BondValuationResponseDto</description></item>
-    /// <item><description>ValuationLine ↔ ValuationLineDto</description></item>
-    /// </list>
-    /// 
-    /// Swagger UI is available at:
-    /// <list type="bullet">
-    /// <item><description><c>/swagger</c> - Interactive API documentation</description></item>
-    /// <item><description><c>/swagger/v1/swagger.json</c> - OpenAPI specification</description></item>
-    /// </list>
+    /// The Swagger UI is mapped by the UseSwaggerDocumentation extension method
+    /// and is only enabled in Development environment by default.
     /// </remarks>
     public static IServiceCollection AddOpenApi(this IServiceCollection services,
         Assembly apiAssembly)
@@ -453,6 +473,64 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers FluentValidation validators for request and DTO validation.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    /// <remarks>
+    /// FluentValidation provides a strongly-typed, fluent interface for defining validation rules
+    /// on request DTOs. This approach offers several advantages over data annotations:
+    /// <list type="bullet">
+    /// <item><description>Separation of concerns - Validation logic is separated from model classes</description></item>
+    /// <item><description>Reusability - Validators can be composed and shared across models</description></item>
+    /// <item><description>Testability - Validators can be unit tested independently</description></item>
+    /// <item><description>Complex rules - Supports conditional validation, custom validators, and async validation</description></item>
+    /// <item><description>Clear error messages - Detailed, contextual validation error messages</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Registered Validators:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <term><see cref="SubmitCrashReportRequestValidator"/></term>
+    /// <description>Validates crash report submission requests including HMAC signature and timestamp checks</description>
+    /// </item>
+    /// <item>
+    /// <term><see cref="CrashReportDtoValidator"/></term>
+    /// <description>Validates the main crash report DTO including application metadata and system information</description>
+    /// </item>
+    /// <item>
+    /// <term><see cref="CrashExceptionInfoDtoValidator"/></term>
+    /// <description>Validates exception information including type, message, and stack trace data</description>
+    /// </item>
+    /// <item>
+    /// <term><see cref="CrashLogEntryDtoValidator"/></term>
+    /// <description>Validates individual log entries included in crash reports</description>
+    /// </item>
+    /// </list>
+    /// 
+    /// <para>
+    /// All validators are registered with <b>Scoped</b> lifetime to align with the HTTP request lifecycle.
+    /// Validation is automatically invoked by the <see cref="GlobalExceptionHandler"/> when validation
+    /// errors are detected, and results are formatted by <see cref="ValidationErrorResponseFactory"/>
+    /// into RFC 7807 problem details responses.
+    /// </para>
+    /// 
+    /// Example validation error response:
+    /// <code>
+    /// {
+    ///   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+    ///   "title": "One or more validation errors occurred.",
+    ///   "status": 400,
+    ///   "errors": {
+    ///     "CrashReport.AppVersion": ["AppVersion is required."],
+    ///     "CrashReport.Exception.Type": ["Exception type cannot be empty."]
+    ///   }
+    /// }
+    /// </code>
+    /// </remarks>
     public static IServiceCollection AddValidators(this IServiceCollection services)
     {
         services.AddScoped<IValidator<SubmitCrashReportRequest>, SubmitCrashReportRequestValidator>();
