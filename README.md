@@ -36,6 +36,7 @@ https://github.com/user-attachments/assets/a326756b-e2e7-4335-81e8-a604c9eebeab
 - **Crash Reporting**: Automated crash report generation with privacy-preserving path sanitization
 
 ### Crash Reporting & Diagnostics
+<img width="887" height="633" alt="image" src="https://github.com/user-attachments/assets/d4289e10-c8dc-4e08-88f1-ee14acdcc00b" />
 
 Castara includes a comprehensive crash reporting system that captures detailed diagnostic information when unexpected errors occur:
 
