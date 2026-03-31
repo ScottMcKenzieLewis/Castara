@@ -53,7 +53,7 @@ using Microsoft.Extensions.Options;
 ///   "Enabled": true,
 ///   "AllowedClockSkewMinutes": 5,
 ///   "HmacKeys": {
-///     "castara-wpf-v1": "your-secret-key-here"
+///     "castara": "your-key-here"
 ///   }
 /// }
 /// </code>

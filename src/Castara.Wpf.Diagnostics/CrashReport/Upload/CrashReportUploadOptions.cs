@@ -6,6 +6,6 @@ public sealed class CrashReportUploadOptions
     public bool Enabled { get; init; } = false;
     public string BaseUrl { get; init; } = string.Empty;
     public string KeyId { get; init; } = string.Empty;
-    public string HmacSecret { get; init; } = string.Empty;
+    public string HmacKey { get; init; } = string.Empty;
     public int TimeoutSeconds { get; init; } = 10;
 }

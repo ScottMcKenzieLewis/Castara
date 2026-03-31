@@ -1,5 +1,6 @@
 ﻿using Castara.Api.Configuration;
 using Serilog;
+using Serilog.Formatting.Json;
 
 namespace Castara.Api.Extensions;
 
@@ -167,6 +168,11 @@ public static class WebApplicationBuilderExtensions
                 .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
         });
 
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Logging.AddConsole();
+        }
+
         return builder;
     }
 
@@ -264,7 +270,7 @@ public static class WebApplicationBuilderExtensions
     ///   "Enabled": true,
     ///   "AllowedClockSkewMinutes": 5,
     ///   "HmacKeys": {
-    ///     "castara-wpf-v1": "your-secret-key-here-min-32-chars"
+    ///     "castara": "your-key-here-min-32-chars"
     ///   }
     /// }
     /// </code>
@@ -285,7 +291,7 @@ public static class WebApplicationBuilderExtensions
     /// </item>
     /// <item>
     /// <term>HmacKeys (Dictionary&lt;string, string&gt;)</term>
-    /// <description>Mapping of key IDs to shared secrets for HMAC-SHA256 signature validation.
+    /// <description>Mapping of key IDs to shared keys for HMAC-SHA256 signature validation.
     /// Supports key rotation by maintaining multiple active keys. Key IDs are sent in the
     /// X-Castara-Key-Id header by clients.</description>
     /// </item>
@@ -302,7 +308,7 @@ public static class WebApplicationBuilderExtensions
     ///     {
     ///         var config = options.Value;
     ///         if (!config.Enabled) { /* reject request */ }
-    ///         var secret = config.HmacKeys[keyId];
+    ///         var key = config.HmacKeys[keyId];
     ///     }
     /// }
     /// </code>

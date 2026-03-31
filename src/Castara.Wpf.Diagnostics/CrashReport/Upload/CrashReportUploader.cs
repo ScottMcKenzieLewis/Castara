@@ -43,7 +43,7 @@ public sealed class CrashReportUploader : ICrashReportUploader
             var json = CrashReportUploadJson.Serialize(requestModel);
 
             var (timestamp, signature) =
-                CrashReportRequestSigner.Sign(_options.HmacSecret, json);
+                CrashReportRequestSigner.Sign(_options.HmacKey, json);
 
             using var requestMessage = new HttpRequestMessage(
                 HttpMethod.Post,

@@ -1,6 +1,7 @@
 ﻿using Castara.Api.Configuration;
 using Castara.Api.Services.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Castara.Api.Middleware.Diagnostics;
@@ -35,7 +36,7 @@ public sealed class CrashReportHmacValidationMiddleware
         ILogger<CrashReportHmacValidationMiddleware> logger)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? NullLogger<CrashReportHmacValidationMiddleware>.Instance;
     }
 
     /// <summary>

@@ -33,7 +33,7 @@
 /// </para>
 /// Endpoints marked with this attribute must include the following headers:
 /// <list type="bullet">
-/// <item><description><b>X-Castara-Key-Id</b>: Identifies which shared secret to use for validation</description></item>
+/// <item><description><b>X-Castara-Key-Id</b>: Identifies which shared key to use for validation</description></item>
 /// <item><description><b>X-Castara-Timestamp</b>: ISO 8601 timestamp for replay attack prevention</description></item>
 /// <item><description><b>X-Castara-Signature</b>: Hex-encoded HMAC-SHA256 signature of "timestamp\nbody"</description></item>
 /// </list>
@@ -140,7 +140,6 @@
 /// </para>
 /// <list type="bullet">
 /// <item><description>This attribute should be applied to all crash report submission endpoints</description></item>
-/// <item><description>HMAC keys must be securely stored (Azure Key Vault, AWS Secrets Manager)</description></item>
 /// <item><description>Clock skew should be minimal (typically 5 minutes) to prevent replay attacks</description></item>
 /// <item><description>Signature validation uses constant-time comparison to prevent timing attacks</description></item>
 /// </list>
