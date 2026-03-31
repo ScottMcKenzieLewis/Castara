@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UserSecretsId>5134f1d1-ff4e-4577-a021-4d6cfcd66e02</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,12 +18,25 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <Content Include="appsettings.Development.json">
+      <DependentUpon>appsettings.json</DependentUpon>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="MaterialDesignColors" Version="5.3.1-ci1279" />
     <PackageReference Include="MaterialDesignThemes" Version="5.3.1-ci1279" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
     <PackageReference Include="Moq" Version="4.20.72" />
@@ -34,6 +48,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Castara.Application\Castara.Application.csproj" />
     <ProjectReference Include="..\Castara.Domain\Castara.Domain.csproj" />
+    <ProjectReference Include="..\Castara.Wpf.Diagnostics\Castara.Wpf.Diagnostics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

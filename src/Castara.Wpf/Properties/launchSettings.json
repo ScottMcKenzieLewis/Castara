@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Castara.Wpf": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

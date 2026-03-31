@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 
-namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
+namespace Castara.Wpf.Diagnostics.Telemetry.Logging;
 
 /// <summary>
 /// Logger provider that creates <see cref="LogStoreLogger"/> instances writing to an <see cref="ILogStore"/>.

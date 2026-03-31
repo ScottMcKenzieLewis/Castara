@@ -47,10 +47,6 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     /// <description>Response</description>
     /// </listheader>
     /// <item>
-    /// <term><see cref="DomainValidationException"/></term>
-    /// <description>400 Bad Request with "domain_validation_error" code for business rule violations</description>
-    /// </item>
-    /// <item>
     /// <term><see cref="ArgumentException"/></term>
     /// <description>400 Bad Request with "validation_error" code for input validation failures</description>
     /// </item>

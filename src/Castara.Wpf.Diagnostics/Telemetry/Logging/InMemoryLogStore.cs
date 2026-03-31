@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Castara.Wpf.Infrastructure.Telemetry.Logging;
+namespace Castara.Wpf.Diagnostics.Telemetry.Logging;
 
 /// <summary>
 /// Thread-safe, in-memory log store with capacity-based automatic trimming.

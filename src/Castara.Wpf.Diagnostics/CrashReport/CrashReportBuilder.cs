@@ -1,5 +1,5 @@
 ﻿using Castara.Wpf.Diagnostics.CrashReport.Interfaces;
-using Castara.Wpf.Infrastructure.Telemetry.Logging;
+using Castara.Wpf.Diagnostics.Telemetry.Logging;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;

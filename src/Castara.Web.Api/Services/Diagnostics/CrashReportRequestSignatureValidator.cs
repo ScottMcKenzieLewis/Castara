@@ -1,4 +1,6 @@
 ﻿using Castara.Api.Configuration;
+using Castara.Api.Middleware.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -45,15 +47,21 @@ public sealed class CrashReportRequestSignatureValidator
 
     private readonly CrashReportIngestionOptions _options;
 
+    private readonly ILogger<CrashReportRequestSignatureValidator> _logger;
+
+
     /// <summary>
     /// Initializes a new instance of the <see cref="CrashReportRequestSignatureValidator"/> class.
     /// </summary>
     /// <param name="options">Configuration options containing HMAC keys and clock skew settings.</param>
+    /// <param name="logger">Logger instance for diagnostic output.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
     public CrashReportRequestSignatureValidator(
-        IOptions<CrashReportIngestionOptions> options)
+        IOptions<CrashReportIngestionOptions> options,
+        ILogger<CrashReportRequestSignatureValidator> logger)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger ?? NullLogger<CrashReportRequestSignatureValidator>.Instance;
     }
 
     /// <summary>
@@ -79,6 +87,10 @@ public sealed class CrashReportRequestSignatureValidator
     /// <item><description>Computes expected HMAC-SHA256 signature of "timestamp\nbody" payload</description></item>
     /// <item><description>Performs constant-time comparison of expected vs. provided signature (prevents timing attacks)</description></item>
     /// </list>
+    /// <para>
+    /// <strong>Security Note:</strong> This method enables request body buffering, allowing the body to be read
+    /// multiple times. The body position is reset after reading to ensure downstream handlers can still access it.
+    /// </para>
     /// </remarks>
     public async Task<bool> IsValidAsync(HttpRequest request, CancellationToken cancellationToken)
     {
@@ -86,8 +98,13 @@ public sealed class CrashReportRequestSignatureValidator
 
         // Extract required headers
         var keyId = request.Headers[KeyIdHeaderName].FirstOrDefault();
+        _logger.LogInformation("Key ID: {KeyId}", keyId);
+
         var timestampText = request.Headers[TimestampHeaderName].FirstOrDefault();
+        _logger.LogInformation("Timestamp: {Timestamp}", timestampText);
+
         var providedSignature = request.Headers[SignatureHeaderName].FirstOrDefault();
+        _logger.LogInformation("Signature: {Signature}", providedSignature);
 
         // Validate header presence
         if (string.IsNullOrWhiteSpace(keyId) ||
@@ -97,12 +114,14 @@ public sealed class CrashReportRequestSignatureValidator
             return false;
         }
 
-        // Lookup shared secret by key ID
-        if (!_options.HmacKeys.TryGetValue(keyId, out var secret) ||
-            string.IsNullOrWhiteSpace(secret))
+        // Lookup shared key by key ID
+        if (!_options.HmacKeys.TryGetValue(keyId, out var hmacKey) ||
+            string.IsNullOrWhiteSpace(hmacKey))
         {
             return false;
         }
+
+        _logger.LogInformation("HMAC Key: {HmacKey}", hmacKey);
 
         // Parse timestamp
         if (!DateTimeOffset.TryParse(
@@ -142,7 +161,7 @@ public sealed class CrashReportRequestSignatureValidator
 
         // Compute expected HMAC signature
         var payload = $"{timestampText}\n{body}";
-        var expectedSignature = ComputeSignature(secret, payload);
+        var expectedSignature = ComputeSignature(hmacKey, payload);
 
         // Perform constant-time comparison to prevent timing attacks
         var expectedBytes = Encoding.UTF8.GetBytes(expectedSignature);
@@ -157,6 +176,14 @@ public sealed class CrashReportRequestSignatureValidator
     /// <param name="secret">The shared secret key used for HMAC computation.</param>
     /// <param name="payload">The payload string to sign (typically "timestamp\nbody").</param>
     /// <returns>The hex-encoded (uppercase) HMAC-SHA256 signature.</returns>
+    /// <remarks>
+    /// The signature is computed by:
+    /// <list type="number">
+    /// <item><description>Converting the secret and payload to UTF-8 byte arrays</description></item>
+    /// <item><description>Computing HMAC-SHA256 hash of the payload using the secret</description></item>
+    /// <item><description>Converting the hash to an uppercase hexadecimal string</description></item>
+    /// </list>
+    /// </remarks>
     private static string ComputeSignature(string secret, string payload)
     {
         var secretBytes = Encoding.UTF8.GetBytes(secret);

@@ -1,4 +1,6 @@
-﻿using Castara.Api.Configuration;
+﻿using Asp.Versioning.ApiExplorer;
+using Castara.Api.Configuration;
+using Castara.Api.Exceptions;
 using Castara.Api.Health;
 using Castara.Api.Middleware;
 using Castara.Api.Middleware.Diagnostics;
@@ -451,6 +453,18 @@ public static class WebApplicationExtensions
     {
         // Serve OpenAPI specification as JSON at /swagger/v1/swagger.json
         app.UseSwagger();
+
+        var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
+        app.UseSwaggerUI(options =>
+        {
+            foreach (var description in provider.ApiVersionDescriptions)
+            {
+                options.SwaggerEndpoint(
+                    $"/swagger/{description.GroupName}/swagger.json",
+                    description.GroupName.ToUpperInvariant());
+            }
+        });
 
         // Serve interactive Swagger UI at /swagger
         app.UseSwaggerUI();

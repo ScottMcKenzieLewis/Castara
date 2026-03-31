@@ -1,0 +1,206 @@
+﻿<Window x:Class="Castara.Wpf.Diagnostics.CrashReport.CrashReportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+        Title="Castara Error Report"
+        Height="640"
+        Width="900"
+        MinHeight="520"
+        MinWidth="720"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        Background="#11161B"
+        Foreground="#E6E6E6">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal">
+            <materialDesign:PackIcon Kind="AlertCircleOutline"
+                                     Width="28"
+                                     Height="28"
+                                     Margin="0,0,12,0"
+                                     Foreground="#F2C94C"
+                                     VerticalAlignment="Top"/>
+            <StackPanel>
+                <TextBlock Text="{Binding Title}"
+                           FontSize="20"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding ReportId, StringFormat=Report ID: {0}}"
+                           Margin="0,4,0,0"
+                           Foreground="#A9B4C2"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="2"
+                Padding="14"
+                Background="#182028"
+                BorderBrush="#2E3A46"
+                BorderThickness="1"
+                CornerRadius="10">
+            <TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Foreground="#D6DCE5"/>
+        </Border>
+
+        <Border Grid.Row="4"
+                Background="#0D1217"
+                BorderBrush="#2E3A46"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="12">
+            <DockPanel>
+                <Grid DockPanel.Dock="Top"
+                      Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Diagnostic report preview"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1"
+                            Command="{Binding CopyCommand}"
+                            Style="{StaticResource MaterialDesignToolButton}"
+                            ToolTip="Copy report to clipboard"
+                            Width="34"
+                            Height="28"
+                            Padding="0"
+                            MinWidth="0">
+                        <materialDesign:PackIcon Kind="ContentCopy"
+                                                 Width="18"
+                                                 Height="18"
+                                                 Foreground="#D6D6D6"/>
+                    </Button>
+                </Grid>
+
+                <TextBox Text="{Binding ReportJson, Mode=OneWay}"
+                         IsReadOnly="True"
+                         TextWrapping="NoWrap"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         Background="#0B0F13"
+                         Foreground="#DCE6F2"
+                         BorderThickness="0"/>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Vertical"
+                        VerticalAlignment="Center"
+                        Margin="0,0,16,0">
+
+                <CheckBox Content="Send diagnostic report for analysis"
+                          IsChecked="{Binding SendReport}"
+                          Margin="0,0,0,8"
+                          Visibility="{Binding IsCrashReportUploadEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <CheckBox Content="Save a local copy of the report"
+                          IsChecked="{Binding SaveLocally}"/>
+
+                <Border Margin="28,8,0,0"
+                        Padding="10,8"
+                        Background="#182028"
+                        BorderBrush="#2E3A46"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Visibility="{Binding SaveLocally, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <materialDesign:PackIcon Grid.Column="0"
+                                                 Kind="FolderOutline"
+                                                 Width="18"
+                                                 Height="18"
+                                                 VerticalAlignment="Top"
+                                                 Margin="0,2,0,0"
+                                                 Foreground="#A9B4C2"/>
+
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Vertical"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="Saved to"
+                                       FontSize="11"
+                                       Foreground="#8FA1B3"
+                                       Margin="0,0,0,2"/>
+
+                            <TextBlock Text="{Binding LocalSaveDirectory}"
+                                       Foreground="#D6DCE5"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding LocalSaveDirectory}"/>
+
+                            <TextBlock Text="{Binding LocalSaveFileName}"
+                                       FontSize="11"
+                                       Foreground="#8FA1B3"
+                                       Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding LocalSaveFileName}"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="3"
+                                Command="{Binding CopySavePathCommand}"
+                                Style="{StaticResource MaterialDesignToolButton}"
+                                ToolTip="Copy full save path"
+                                Width="28"
+                                Height="28"
+                                Padding="0"
+                                MinWidth="0"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="ContentCopy"
+                                                     Width="16"
+                                                     Height="16"
+                                                     Foreground="#D6D6D6"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom">
+                <Button Content="Close Without Saving"
+                        Command="{Binding CloseCommand}"
+                        Margin="0,0,10,0"
+                        MinWidth="150"/>
+
+                <Button Content="{Binding PrimaryActionText}"
+                        Command="{Binding ContinueCommand}"
+                        MinWidth="170"
+                        Visibility="{Binding HasPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

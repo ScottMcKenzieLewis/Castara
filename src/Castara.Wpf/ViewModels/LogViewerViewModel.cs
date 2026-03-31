@@ -7,7 +7,7 @@ using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
 using Castara.Wpf.Infrastructure.Commands;
-using Castara.Wpf.Infrastructure.Telemetry.Logging;
+using Castara.Wpf.Diagnostics.Telemetry.Logging;
 using Castara.Wpf.Services.Clipboard;
 using Microsoft.Extensions.Logging;
 
