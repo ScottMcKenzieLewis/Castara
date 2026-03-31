@@ -49,7 +49,30 @@ Castara includes a comprehensive crash reporting system that captures detailed d
   - Recent log entries (last 200 entries with timestamps, levels, categories, and messages)
 - **JSON Format**: Reports are saved as human-readable, structured JSON files for easy analysis
 - **Persistent Storage**: Reports are stored in `%LocalAppData%\Castara\CrashReports` with timestamped filenames
-- **User Notification**: Friendly dialog displays the report location and unique report ID after successful save
+- **User Control**: Interactive dialog allows users to review crash details and choose whether to save locally and/or send to the diagnostic server
+- **Optional Upload**: Crash report upload to the diagnostic server can be disabled in `appsettings.json` by setting `CrashReportUpload.Enabled` to `false`
+
+#### Configuration
+
+Crash report upload behavior can be configured in `appsettings.json`:
+
+```json
+{
+  "CrashReportUpload": {
+    "Enabled": true,              // Set to false to disable crash report upload
+    "BaseUrl": "https://...",     // Diagnostic server endpoint
+    "KeyId": "castara",           // Authentication key identifier
+    "HmacKey": "...",             // HMAC-SHA256 shared secret
+    "TimeoutSeconds": 10          // Upload timeout in seconds
+  }
+}
+```
+
+When upload is disabled (`Enabled: false`), users will only see the option to save crash reports locally. This is useful for:
+- **Privacy-sensitive environments** where external data transmission is restricted
+- **Offline installations** without internet connectivity
+- **Development/testing** scenarios where server upload is not needed
+- **Organizations with internal-only diagnostics** workflows
 
 #### Path Sanitization Example
 
