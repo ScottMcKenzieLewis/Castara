@@ -354,7 +354,6 @@ Risk scores combine multiple metallurgical factors:
 
 ### Planned Features
 
-- [x] **Multiple Casting Profiles** - ✅ Completed: Support for Green Sand, No-Bake, Shell Mold, and Heavy Section profiles with process-specific tuning
 - [ ] **Ductile Iron Support** - Add estimation strategy and profiles for ductile (nodular) iron with different CE formula and microstructure model
 - [ ] **Profile Editor** - UI for creating and editing custom casting profiles with validation
 - [ ] **Stock Inventory Integration** - Constrain composition inputs to feed from stock inventory service, ensuring accuracy and traceability to available materials

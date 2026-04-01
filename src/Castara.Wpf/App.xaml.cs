@@ -278,8 +278,6 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<ICastingProfileAware>(sp => sp.GetRequiredService<CalculationsViewModel>());
 
-        services.AddAutoMapper(cfg => { }, typeof(CastingProfileMappingProfile).Assembly);
-
         // --------------------
         // Windows / Views
         // --------------------
