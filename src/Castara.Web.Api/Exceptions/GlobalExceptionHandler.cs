@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Castara.Api.Dtos;
+using Castara.Api.Serialization;
 using Microsoft.AspNetCore.Diagnostics;
 
 namespace Castara.Api.Exceptions;
@@ -101,13 +102,10 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             TraceId = httpContext.TraceIdentifier
         };
 
+        var json = JsonSerializer.Serialize(dto, CastaraJsonContext.Default.ApiErrorDto);
+
         await httpContext.Response.WriteAsync(
-            JsonSerializer.Serialize(
-                dto,
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                }),
+            json,
             cancellationToken);
 
         return true;

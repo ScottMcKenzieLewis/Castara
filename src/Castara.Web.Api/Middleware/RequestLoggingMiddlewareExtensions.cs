@@ -1,4 +1,4 @@
-﻿namespace Treasara.Api.Middleware;
+﻿namespace Castara.Api.Middleware;
 
 /// <summary>
 /// Extension methods for registering the <see cref="RequestLoggingMiddleware"/> in the application pipeline.

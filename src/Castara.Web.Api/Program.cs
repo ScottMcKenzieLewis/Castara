@@ -9,7 +9,7 @@ using Castara.Api.Extensions;
 // organize configuration into logical groups.
 //
 // Architecture:
-// - ConfigureTreasaraLogging: Sets up structured logging with Serilog
+// - ConfigureLogging: Sets up structured logging with Serilog
 // - AddApi: Registers all services (controllers, validators, mappers, etc.)
 // - UseApiPipeline: Configures middleware pipeline (logging, etc.)
 // - MapEndpoints: Maps controllers and health check endpoints
@@ -17,7 +17,9 @@ using Castara.Api.Extensions;
 // See the Extensions folder for detailed configuration of each component.
 // ============================================================================
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.WebHost.UseKestrelHttpsConfiguration();
 
 // Configure structured logging with Serilog
 // See: WebApplicationBuilderExtensions.cs for logging configuration details

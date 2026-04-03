@@ -1,14 +1,14 @@
 ﻿using Asp.Versioning;
 using Castara.Api.Configuration;
 using Castara.Api.Diagnostics.Services;
-using Castara.Api.Dtos;
-using Castara.Api.Dtos.Responses;
 using Castara.Api.Exceptions;
 using Castara.Api.OpenApi;
+using Castara.Api.Serialization;
 using Castara.Api.Services.Diagnostics;
 using Castara.Diagnostics.Api.Services.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics.Requests;
+using Castara.Web.Api.Dtos.Validation;
 using Castara.Web.Api.Services.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -95,9 +95,6 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register ASP.NET Core MVC controllers
-        services.AddControllers();
-
         // Register organized service groups
         services.AddApiVersioning();
         services.AddRateLimiting(configuration);
@@ -106,6 +103,7 @@ public static class ServiceCollectionExtensions
         services.AddApplicationServices();
         services.AddHealthChecks();
         services.AddValidators();
+        services.AddJsonOptions();
 
         return services;
     }
@@ -150,7 +148,6 @@ public static class ServiceCollectionExtensions
             // Read version from URL segment (e.g., /api/v1/...)
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         })
-        .AddMvc()
         .AddApiExplorer(options =>
         {
             options.GroupNameFormat = "'v'V";
@@ -537,6 +534,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IValidator<CrashReportDto>, CrashReportDtoValidator>();
         services.AddScoped<IValidator<CrashExceptionInfoDto>, CrashExceptionInfoDtoValidator>();
         services.AddScoped<IValidator<CrashLogEntryDto>, CrashLogEntryDtoValidator>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddJsonOptions(this IServiceCollection services)
+    {
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, CastaraJsonContext.Default);
+        });
 
         return services;
     }

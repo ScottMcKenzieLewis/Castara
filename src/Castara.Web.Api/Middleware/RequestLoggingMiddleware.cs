@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace Treasara.Api.Middleware;
+namespace Castara.Api.Middleware;
 
 /// <summary>
 /// Middleware for logging incoming HTTP requests and their completion with timing information.

@@ -1,4 +1,4 @@
-﻿namespace Castara.Api.Dtos;
+﻿namespace Castara.Web.Api.Dtos.Validation;
 
 public sealed class ValuationLineDto
 {

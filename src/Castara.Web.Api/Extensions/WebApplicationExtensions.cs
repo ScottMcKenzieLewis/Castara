@@ -5,7 +5,9 @@ using Castara.Api.Health;
 using Castara.Api.Middleware;
 using Castara.Api.Middleware.Diagnostics;
 using Castara.Web.Api.Attributes.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
+using Castara.Web.Api.Dtos.Diagnostics.Requests;
+using Castara.Web.Api.Dtos.Diagnostics.Responses;
+using Castara.Web.Api.Endpoints.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
@@ -210,10 +212,18 @@ public static class WebApplicationExtensions
         // Used by load balancers to determine if the app can receive traffic
         MapHealthCheck(app, "/health/ready");
 
-        // Map all controller endpoints with rate limiting
-        // Rate limiting protects the API from abuse and resource exhaustion
-        app.MapControllers()
-           .RequireRateLimiting(ServiceCollectionExtensions.PublicApiRateLimitPolicy);
+        app.MapPost(
+              "/api/v1/diagnostics/crash-reports",
+              CrashReportEndpoints.SubmitAsync)
+          .WithMetadata(new RequireCrashReportHmacAttribute())
+          .RequireRateLimiting(ServiceCollectionExtensions.PublicApiRateLimitPolicy)
+          .WithTags("Diagnostics")
+          .Accepts<SubmitCrashReportRequest>("application/json")
+          .Produces<SubmitCrashReportResponse>(StatusCodes.Status202Accepted)
+          .ProducesProblem(StatusCodes.Status400BadRequest)
+          .ProducesProblem(StatusCodes.Status401Unauthorized)
+          .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+          .WithName("SubmitCrashReport");
 
         return app;
     }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+﻿using Castara.Api.Serialization;
+using Castara.Web.Api.Dtos.HealthReport;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Text.Json;
 
@@ -89,25 +90,22 @@ public static class HealthCheckResponseWriter
         context.Response.ContentType = "application/json";
 
         // Build the health check response payload
-        var payload = new
+        var payload = new HealthReportDto
         {
-            status = report.Status.ToString(),
-            totalDuration = report.TotalDuration.TotalMilliseconds,
-            checks = report.Entries.Select(entry => new
+            Status = report.Status.ToString(),
+            TotalDuration = report.TotalDuration.TotalMilliseconds,
+            Checks = report.Entries.Select(entry => new HealthReportEntryDto
             {
-                name = entry.Key,
-                status = entry.Value.Status.ToString(),
-                description = entry.Value.Description,
-                duration = entry.Value.Duration.TotalMilliseconds
+                Name = entry.Key,
+                Status = entry.Value.Status.ToString(),
+                Description = entry.Value.Description,
+                Duration = entry.Value.Duration.TotalMilliseconds
             }),
-            traceId = context.TraceIdentifier
+            TraceId = context.TraceIdentifier
         };
 
         // Serialize with indentation for human readability
-        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        var json = JsonSerializer.Serialize(payload, CastaraJsonContext.Default.HealthReportDto);
 
         // Write the JSON response
         await context.Response.WriteAsync(json);

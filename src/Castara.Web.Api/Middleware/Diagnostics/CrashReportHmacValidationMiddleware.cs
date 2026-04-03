@@ -1,5 +1,7 @@
 ﻿using Castara.Api.Configuration;
+using Castara.Api.Serialization;
 using Castara.Api.Services.Diagnostics;
+using Castara.Web.Api.Attributes.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -73,6 +75,15 @@ public sealed class CrashReportHmacValidationMiddleware
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        var endpoint = context.GetEndpoint();
+
+        var requiresHmac = endpoint?.Metadata.GetMetadata<RequireCrashReportHmacAttribute>() is not null;
+        if (!requiresHmac)
+        {
+            await _next(context);
+            return;
+        }
+
         var ingestionOptions = options.Value;
 
         // Check if crash report ingestion is enabled in configuration
@@ -85,7 +96,7 @@ public sealed class CrashReportHmacValidationMiddleware
                 Title = "Crash report ingestion is disabled.",
                 Detail = "The service is not currently accepting crash reports.",
                 Status = StatusCodes.Status503ServiceUnavailable
-            });
+            }, CastaraJsonContext.Default.ProblemDetails, cancellationToken: context.RequestAborted);
 
             return;
         }
@@ -106,7 +117,7 @@ public sealed class CrashReportHmacValidationMiddleware
                 Title = "Unauthorized",
                 Detail = "A valid request signature is required.",
                 Status = StatusCodes.Status401Unauthorized
-            });
+            }, CastaraJsonContext.Default.ProblemDetails, cancellationToken: context.RequestAborted);
 
             return;
         }
