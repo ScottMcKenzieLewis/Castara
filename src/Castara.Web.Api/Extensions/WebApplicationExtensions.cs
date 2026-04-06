@@ -139,7 +139,7 @@ public static class WebApplicationExtensions
 
         // Serilog request logging - Rich structured logging with custom enrichment
         // Replaces RequestLoggingMiddleware with Serilog's optimized implementation
-        ConfigureSerilogRequestLogging(app);
+        app.ConfigureSerilogRequestLogging();
 
         // Note: Controllers are mapped in MapEndpoints()
 
@@ -571,7 +571,7 @@ public static class WebApplicationExtensions
     /// {"@t":"2026-03-10T15:30:45.1234Z","@mt":"HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms","RequestMethod":"GET","RequestPath":"/api/v1/bonds/value","StatusCode":200,"Elapsed":145.2341,"CorrelationId":"01HN3KQVMQXYZ5N8J7G2P4W6ST","TraceIdentifier":"0HMVFE3A4TQKJ:00000001","RequestHost":"localhost:5001","RequestScheme":"https","EndpointName":"BondsController.Value","@l":"Information"}
     /// </code>
     /// </remarks>
-    private static void ConfigureSerilogRequestLogging(WebApplication app)
+    private static WebApplication ConfigureSerilogRequestLogging(this WebApplication app)
     {
         app.UseSerilogRequestLogging(options =>
         {
@@ -634,6 +634,8 @@ public static class WebApplicationExtensions
                 }
             };
         });
+
+        return app;
     }
 
     /// <summary>
