@@ -78,8 +78,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 LogLevel.Error)
         };
 
-        _logger.Log(
-            level,
+        _logger.LogError(
             exception,
             "Unhandled exception for {Method} {Path}. TraceId: {TraceId}",
             httpContext.Request.Method,

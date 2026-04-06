@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
 
-namespace Castara.Api.Extensions;
+namespace Castara.Web.Api.Extensions;
 
 /// <summary>
 /// Extension methods for configuring the application's middleware pipeline and endpoint routing.
@@ -117,12 +117,11 @@ public static class WebApplicationExtensions
     {
         // Exception handler - Must be first to catch all errors
         // Configured to not suppress diagnostics so exceptions are logged properly
-        ConfigureExceptionHandling(app);
+        app.ConfigureExceptionHandling();
 
-        ConfigureOpenApi(app);
+        app.ConfigureOpenApi();
 
-        // HTTPS redirection - Redirect HTTP to HTTPS
-        app.UseHttpsRedirection();
+        app.ConfigureHttpsRedirection();
 
         // Security header cleanup - Remove information disclosure headers
         app.UseSecurityHeaderCleanup();
@@ -143,6 +142,18 @@ public static class WebApplicationExtensions
         ConfigureSerilogRequestLogging(app);
 
         // Note: Controllers are mapped in MapEndpoints()
+
+        return app;
+    }
+
+    private static WebApplication ConfigureHttpsRedirection(this WebApplication app)
+    {
+        var enableHttpsRedirection = app.Configuration.GetValue<bool>("EnableHttpsRedirection");
+
+        if (enableHttpsRedirection)
+        {
+            app.UseHttpsRedirection();
+        }
 
         return app;
     }
@@ -359,9 +370,15 @@ public static class WebApplicationExtensions
     /// <item><description>Maintaining observability across the application</description></item>
     /// </list>
     /// </remarks>
-    private static void ConfigureExceptionHandling(WebApplication app)
+    private static WebApplication ConfigureExceptionHandling(this WebApplication app)
     {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
         app.UseExceptionHandler();
+
+        return app;
     }
 
     /// <summary>
@@ -459,7 +476,7 @@ public static class WebApplicationExtensions
     /// This method is called from <see cref="UseApiPipeline"/> after exception handling
     /// and before security middleware.
     /// </remarks>
-    private static void ConfigureOpenApi(WebApplication app)
+    private static WebApplication ConfigureOpenApi(this WebApplication app)
     {
         // Serve OpenAPI specification as JSON at /swagger/v1/swagger.json
         app.UseSwagger();
@@ -478,6 +495,8 @@ public static class WebApplicationExtensions
 
         // Serve interactive Swagger UI at /swagger
         app.UseSwaggerUI();
+
+        return app;
     }
 
     /// <summary>

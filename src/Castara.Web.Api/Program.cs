@@ -1,4 +1,4 @@
-using Castara.Api.Extensions;
+using Castara.Web.Api.Extensions;
 
 // ============================================================================
 // API Application Entry Point
@@ -29,26 +29,28 @@ builder.ConfigureRequestHeadersTimeout();
 
 builder.AddCrashReportIngestionOptions();
 
-// Register application services (DI container configuration)
-// Includes: Controllers, validators, mappers, AutoMapper, FluentValidation, etc.
-// See: ServiceCollectionExtensions.cs for service registration details
+//// Register application services (DI container configuration)
+//// Includes: Validators, mappers, AutoMapper, FluentValidation, etc.
+//// See: ServiceCollectionExtensions.cs for service registration details
 builder.Services.AddApi(builder.Configuration);
 
-// Build the application
+//// Build the application
 var app = builder.Build();
 
-// Configure the HTTP request pipeline (middleware)
-// Includes: Exception handling, rate limiting, etc.
-// See: WebApplicationExtensions.cs for middleware pipeline configuration
+//// Configure the HTTP request pipeline (middleware)
+//// Includes: Exception handling, rate limiting, etc.
+//// See: WebApplicationExtensions.cs for middleware pipeline configuration
 app.UseApiPipeline();
 
-// Map API endpoints and health checks
-// Configures routing for controllers and health check endpoints
-// See: WebApplicationExtensions.cs for endpoint mapping details
+//// Map API endpoints and health checks
+//// Configures routing for controllers and health check endpoints
+//// See: WebApplicationExtensions.cs for endpoint mapping details
 app.MapEndpoints();
 
-// Start the application and begin listening for requests
 app.Run();
+
+//// Start the application and begin listening for requests
+//app.Run();
 
 /// <summary>
 /// Partial class declaration for the Program type, used for integration testing.
