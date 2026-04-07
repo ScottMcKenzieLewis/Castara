@@ -5,12 +5,14 @@ using Castara.Api.Health;
 using Castara.Api.Middleware;
 using Castara.Api.Middleware.Diagnostics;
 using Castara.Web.Api.Attributes.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
+using Castara.Web.Api.Dtos.Diagnostics.Requests;
+using Castara.Web.Api.Dtos.Diagnostics.Responses;
+using Castara.Web.Api.Endpoints.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
 
-namespace Castara.Api.Extensions;
+namespace Castara.Web.Api.Extensions;
 
 /// <summary>
 /// Extension methods for configuring the application's middleware pipeline and endpoint routing.
@@ -115,12 +117,11 @@ public static class WebApplicationExtensions
     {
         // Exception handler - Must be first to catch all errors
         // Configured to not suppress diagnostics so exceptions are logged properly
-        ConfigureExceptionHandling(app);
+        app.ConfigureExceptionHandling();
 
-        ConfigureOpenApi(app);
+        app.ConfigureOpenApi();
 
-        // HTTPS redirection - Redirect HTTP to HTTPS
-        app.UseHttpsRedirection();
+        app.ConfigureHttpsRedirection();
 
         // Security header cleanup - Remove information disclosure headers
         app.UseSecurityHeaderCleanup();
@@ -138,9 +139,21 @@ public static class WebApplicationExtensions
 
         // Serilog request logging - Rich structured logging with custom enrichment
         // Replaces RequestLoggingMiddleware with Serilog's optimized implementation
-        ConfigureSerilogRequestLogging(app);
+        app.ConfigureSerilogRequestLogging();
 
         // Note: Controllers are mapped in MapEndpoints()
+
+        return app;
+    }
+
+    private static WebApplication ConfigureHttpsRedirection(this WebApplication app)
+    {
+        var enableHttpsRedirection = app.Configuration.GetValue<bool>("EnableHttpsRedirection");
+
+        if (enableHttpsRedirection)
+        {
+            app.UseHttpsRedirection();
+        }
 
         return app;
     }
@@ -210,10 +223,18 @@ public static class WebApplicationExtensions
         // Used by load balancers to determine if the app can receive traffic
         MapHealthCheck(app, "/health/ready");
 
-        // Map all controller endpoints with rate limiting
-        // Rate limiting protects the API from abuse and resource exhaustion
-        app.MapControllers()
-           .RequireRateLimiting(ServiceCollectionExtensions.PublicApiRateLimitPolicy);
+        app.MapPost(
+              "/api/v1/diagnostics/crash-reports",
+              CrashReportEndpoints.SubmitAsync)
+          .WithMetadata(new RequireCrashReportHmacAttribute())
+          .RequireRateLimiting(ServiceCollectionExtensions.PublicApiRateLimitPolicy)
+          .WithTags("Diagnostics")
+          .Accepts<SubmitCrashReportRequest>("application/json")
+          .Produces<SubmitCrashReportResponse>(StatusCodes.Status202Accepted)
+          .ProducesProblem(StatusCodes.Status400BadRequest)
+          .ProducesProblem(StatusCodes.Status401Unauthorized)
+          .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+          .WithName("SubmitCrashReport");
 
         return app;
     }
@@ -349,9 +370,15 @@ public static class WebApplicationExtensions
     /// <item><description>Maintaining observability across the application</description></item>
     /// </list>
     /// </remarks>
-    private static void ConfigureExceptionHandling(WebApplication app)
+    private static WebApplication ConfigureExceptionHandling(this WebApplication app)
     {
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
         app.UseExceptionHandler();
+
+        return app;
     }
 
     /// <summary>
@@ -449,7 +476,7 @@ public static class WebApplicationExtensions
     /// This method is called from <see cref="UseApiPipeline"/> after exception handling
     /// and before security middleware.
     /// </remarks>
-    private static void ConfigureOpenApi(WebApplication app)
+    private static WebApplication ConfigureOpenApi(this WebApplication app)
     {
         // Serve OpenAPI specification as JSON at /swagger/v1/swagger.json
         app.UseSwagger();
@@ -468,6 +495,8 @@ public static class WebApplicationExtensions
 
         // Serve interactive Swagger UI at /swagger
         app.UseSwaggerUI();
+
+        return app;
     }
 
     /// <summary>
@@ -542,7 +571,7 @@ public static class WebApplicationExtensions
     /// {"@t":"2026-03-10T15:30:45.1234Z","@mt":"HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms","RequestMethod":"GET","RequestPath":"/api/v1/bonds/value","StatusCode":200,"Elapsed":145.2341,"CorrelationId":"01HN3KQVMQXYZ5N8J7G2P4W6ST","TraceIdentifier":"0HMVFE3A4TQKJ:00000001","RequestHost":"localhost:5001","RequestScheme":"https","EndpointName":"BondsController.Value","@l":"Information"}
     /// </code>
     /// </remarks>
-    private static void ConfigureSerilogRequestLogging(WebApplication app)
+    private static WebApplication ConfigureSerilogRequestLogging(this WebApplication app)
     {
         app.UseSerilogRequestLogging(options =>
         {
@@ -605,6 +634,8 @@ public static class WebApplicationExtensions
                 }
             };
         });
+
+        return app;
     }
 
     /// <summary>

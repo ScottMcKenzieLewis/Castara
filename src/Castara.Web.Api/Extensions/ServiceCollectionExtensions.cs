@@ -1,14 +1,14 @@
 ﻿using Asp.Versioning;
 using Castara.Api.Configuration;
 using Castara.Api.Diagnostics.Services;
-using Castara.Api.Dtos;
-using Castara.Api.Dtos.Responses;
 using Castara.Api.Exceptions;
 using Castara.Api.OpenApi;
+using Castara.Api.Serialization;
 using Castara.Api.Services.Diagnostics;
 using Castara.Diagnostics.Api.Services.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics.Requests;
+using Castara.Web.Api.Dtos.Validation;
 using Castara.Web.Api.Services.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -18,7 +18,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Threading.RateLimiting;
 
-namespace Castara.Api.Extensions;
+namespace Castara.Web.Api.Extensions;
 
 /// <summary>
 /// Extension methods for configuring application services in the dependency injection container.
@@ -95,9 +95,6 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register ASP.NET Core MVC controllers
-        services.AddControllers();
-
         // Register organized service groups
         services.AddApiVersioning();
         services.AddRateLimiting(configuration);
@@ -106,6 +103,7 @@ public static class ServiceCollectionExtensions
         services.AddApplicationServices();
         services.AddHealthChecks();
         services.AddValidators();
+        services.AddJsonOptions();
 
         return services;
     }
@@ -140,17 +138,16 @@ public static class ServiceCollectionExtensions
         {
             // Set default API version to 1.0
             options.DefaultApiVersion = new ApiVersion(1, 0);
-            
+
             // Assume default version when client doesn't specify one
             options.AssumeDefaultVersionWhenUnspecified = true;
-            
+
             // Add "api-supported-versions" header to responses
             options.ReportApiVersions = true;
-            
+
             // Read version from URL segment (e.g., /api/v1/...)
             options.ApiVersionReader = new UrlSegmentApiVersionReader();
         })
-        .AddMvc()
         .AddApiExplorer(options =>
         {
             options.GroupNameFormat = "'v'V";
@@ -222,13 +219,13 @@ public static class ServiceCollectionExtensions
             {
                 // Maximum requests allowed per window (default: 30)
                 limiterOptions.PermitLimit = config?.PermitLimit ?? 30;
-                
+
                 // Time window duration (default: 60 seconds)
                 limiterOptions.Window = TimeSpan.FromSeconds(config?.WindowSeconds ?? 60);
-                
+
                 // Maximum requests to queue when limit exceeded (default: 0, reject immediately)
                 limiterOptions.QueueLimit = config?.QueueLimit ?? 0;
-                
+
                 // Process queued requests in FIFO order
                 limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             });
@@ -290,7 +287,7 @@ public static class ServiceCollectionExtensions
     /// and is only enabled in Development environment by default.
     /// </remarks>
     public static IServiceCollection AddOpenApi(this IServiceCollection services,
-        Assembly apiAssembly)
+            Assembly apiAssembly)
     {
         // Register API Explorer for metadata generation
         services.AddEndpointsApiExplorer();
@@ -307,7 +304,7 @@ public static class ServiceCollectionExtensions
                 options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
             }
         });
-        
+
         return services;
     }
 
@@ -407,8 +404,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddHealthChecks(this IServiceCollection services)
     {
         // Register health check services (basic infrastructure)
-        HealthCheckServiceCollectionExtensions.AddHealthChecks(services);        
-        
+        HealthCheckServiceCollectionExtensions.AddHealthChecks(services);
+
         return services;
     }
 
@@ -541,4 +538,46 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Configures JSON serialization options for the API using source-generated serialization context.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    /// <remarks>
+    /// This method configures JSON serialization for HTTP endpoints using System.Text.Json with
+    /// Native AOT-compatible source generation for optimal performance and reduced startup time.
+    /// 
+    /// <para>
+    /// <b>Source-Generated Serialization:</b>
+    /// </para>
+    /// The <see cref="CastaraJsonContext"/> is a source-generated JSON serialization context
+    /// that provides the following benefits:
+    /// <list type="bullet">
+    /// <item><description>Native AOT compatibility - No runtime reflection required</description></item>
+    /// <item><description>Faster startup - Serialization metadata generated at compile time</description></item>
+    /// <item><description>Better performance - Optimized serialization code</description></item>
+    /// <item><description>Smaller app size - No reflection-based serialization overhead</description></item>
+    /// <item><description>Trim-safe - Works with IL trimming in published applications</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// The serialization context is inserted at the beginning of the resolver chain to ensure
+    /// it takes precedence over default reflection-based serialization.
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>Serialization Context Registration:</b>
+    /// </para>
+    /// The context must include all types that will be serialized/deserialized by the API.
+    /// Add new types to <see cref="CastaraJsonContext"/> when introducing new DTOs or response models.
+    /// </remarks>
+    public static IServiceCollection AddJsonOptions(this IServiceCollection services)
+    {
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, CastaraJsonContext.Default);
+        });
+
+        return services;
+    }
 }

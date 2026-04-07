@@ -1,4 +1,4 @@
-using Castara.Api.Extensions;
+using Castara.Web.Api.Extensions;
 
 // ============================================================================
 // API Application Entry Point
@@ -9,7 +9,7 @@ using Castara.Api.Extensions;
 // organize configuration into logical groups.
 //
 // Architecture:
-// - ConfigureTreasaraLogging: Sets up structured logging with Serilog
+// - ConfigureLogging: Sets up structured logging with Serilog
 // - AddApi: Registers all services (controllers, validators, mappers, etc.)
 // - UseApiPipeline: Configures middleware pipeline (logging, etc.)
 // - MapEndpoints: Maps controllers and health check endpoints
@@ -17,7 +17,9 @@ using Castara.Api.Extensions;
 // See the Extensions folder for detailed configuration of each component.
 // ============================================================================
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.WebHost.UseKestrelHttpsConfiguration();
 
 // Configure structured logging with Serilog
 // See: WebApplicationBuilderExtensions.cs for logging configuration details
@@ -27,26 +29,28 @@ builder.ConfigureRequestHeadersTimeout();
 
 builder.AddCrashReportIngestionOptions();
 
-// Register application services (DI container configuration)
-// Includes: Controllers, validators, mappers, AutoMapper, FluentValidation, etc.
-// See: ServiceCollectionExtensions.cs for service registration details
+//// Register application services (DI container configuration)
+//// Includes: Validators, mappers, AutoMapper, FluentValidation, etc.
+//// See: ServiceCollectionExtensions.cs for service registration details
 builder.Services.AddApi(builder.Configuration);
 
-// Build the application
+//// Build the application
 var app = builder.Build();
 
-// Configure the HTTP request pipeline (middleware)
-// Includes: Exception handling, rate limiting, etc.
-// See: WebApplicationExtensions.cs for middleware pipeline configuration
+//// Configure the HTTP request pipeline (middleware)
+//// Includes: Exception handling, rate limiting, etc.
+//// See: WebApplicationExtensions.cs for middleware pipeline configuration
 app.UseApiPipeline();
 
-// Map API endpoints and health checks
-// Configures routing for controllers and health check endpoints
-// See: WebApplicationExtensions.cs for endpoint mapping details
+//// Map API endpoints and health checks
+//// Configures routing for controllers and health check endpoints
+//// See: WebApplicationExtensions.cs for endpoint mapping details
 app.MapEndpoints();
 
-// Start the application and begin listening for requests
 app.Run();
+
+//// Start the application and begin listening for requests
+//app.Run();
 
 /// <summary>
 /// Partial class declaration for the Program type, used for integration testing.

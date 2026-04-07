@@ -1,4 +1,4 @@
-﻿namespace Castara.Api.Dtos;
+﻿namespace Castara.Web.Api.Dtos.Validation;
 
 /// <summary>
 /// Represents a structured validation error response returned when FluentValidation detects request validation failures.

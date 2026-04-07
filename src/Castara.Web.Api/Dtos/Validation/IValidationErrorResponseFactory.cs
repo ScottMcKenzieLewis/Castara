@@ -1,7 +1,7 @@
 ﻿using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Castara.Api.Dtos;
+namespace Castara.Web.Api.Dtos.Validation;
 
 /// <summary>
 /// Defines a factory for creating standardized validation error responses.
@@ -46,5 +46,5 @@ public interface IValidationErrorResponseFactory
     /// This method should be called in controllers after FluentValidation detects validation failures
     /// to return a standardized error response to the client.
     /// </remarks>
-    BadRequestObjectResult Create(ValidationResult validationResult, string traceId);
+    ValidationErrorDto Create(ValidationResult validationResult, string traceId);
 }

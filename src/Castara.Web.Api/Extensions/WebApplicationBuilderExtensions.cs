@@ -2,7 +2,7 @@
 using Serilog;
 using Serilog.Formatting.Json;
 
-namespace Castara.Api.Extensions;
+namespace Castara.Web.Api.Extensions;
 
 /// <summary>
 /// Extension methods for configuring the <see cref="WebApplicationBuilder"/> during application startup.
@@ -91,6 +91,15 @@ public static class WebApplicationBuilderExtensions
     /// <item><description><b>Environment</b>: Development/Production/Testing - Current hosting environment</description></item>
     /// </list>
     /// 
+    /// <b>Development-mode console logger:</b>
+    /// In Development environment, the method adds the default ASP.NET Core console logger
+    /// in addition to Serilog. This provides:
+    /// <list type="bullet">
+    /// <item><description><b>Fallback logging</b>: Ensures logs appear if Serilog configuration fails</description></item>
+    /// <item><description><b>Debugging aid</b>: Provides familiar ASP.NET Core log format during development</description></item>
+    /// <item><description><b>Dual output</b>: Logs appear in both Serilog format and ASP.NET format for comparison</description></item>
+    /// </list>
+    /// 
     /// <b>Benefits of configuration-driven approach:</b>
     /// <list type="bullet">
     /// <item><description><b>No recompilation</b>: Change log levels and sinks by editing appsettings.json</description></item>
@@ -119,7 +128,7 @@ public static class WebApplicationBuilderExtensions
     /// 
     /// <b>Integration scenarios:</b>
     /// <list type="bullet">
-    /// <item><description><b>Local Development</b>: Console output with structured JSON (configured in appsettings.Development.json)</description></item>
+    /// <item><description><b>Local Development</b>: Console output with structured JSON plus ASP.NET Core console output</description></item>
     /// <item><description><b>Docker/Kubernetes</b>: Container stdout captured by orchestrator</description></item>
     /// <item><description><b>Azure App Service</b>: Add Application Insights sink in appsettings.json</description></item>
     /// <item><description><b>Production</b>: Multiple sinks (console, file, Application Insights) configured per environment</description></item>
@@ -131,6 +140,7 @@ public static class WebApplicationBuilderExtensions
     /// <item><description>Log level filtering happens before message formatting</description></item>
     /// <item><description>FromLogContext has minimal overhead (property attachment)</description></item>
     /// <item><description>Typical overhead: 5-10µs per log entry</description></item>
+    /// <item><description>Development mode has dual logging overhead (Serilog + ASP.NET Core console)</description></item>
     /// </list>
     /// 
     /// This method is called from Program.cs before service registration:
@@ -151,7 +161,10 @@ public static class WebApplicationBuilderExtensions
                 // Read Serilog configuration from appsettings.json
                 // This includes: minimum log levels, sinks, enrichers, and properties
                 // Configuration section: "Serilog"
-                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Configuration(
+                    context.Configuration,
+                    new Serilog.Settings.Configuration.ConfigurationReaderOptions(
+                        typeof(ConsoleLoggerConfigurationExtensions).Assembly))
 
                 // Enable Serilog to access registered services for dependency injection
                 // Allows custom enrichers and sinks to resolve services from DI container
@@ -168,6 +181,8 @@ public static class WebApplicationBuilderExtensions
                 .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
         });
 
+        // Add ASP.NET Core console logger in development for fallback and debugging
+        // Provides familiar log output alongside Serilog's structured logs
         if (builder.Environment.IsDevelopment())
         {
             builder.Logging.AddConsole();
@@ -365,5 +380,4 @@ public static class WebApplicationBuilderExtensions
 
         return builder;
     }
-
 }
