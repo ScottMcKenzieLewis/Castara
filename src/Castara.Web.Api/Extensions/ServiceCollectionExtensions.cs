@@ -1,4 +1,5 @@
-﻿using Asp.Versioning;
+﻿using Amazon.S3;
+using Asp.Versioning;
 using Castara.Api.Configuration;
 using Castara.Api.Diagnostics.Services;
 using Castara.Api.Exceptions;
@@ -34,6 +35,8 @@ namespace Castara.Web.Api.Extensions;
 /// <item><description>Health check services</description></item>
 /// <item><description>CORS policies</description></item>
 /// <item><description>FluentValidation validators</description></item>
+/// <item><description>AWS services (S3 for crash report storage)</description></item>
+/// <item><description>JSON serialization configuration with source generation</description></item>
 /// </list>
 /// 
 /// The extension method pattern provides several benefits:
@@ -76,14 +79,14 @@ public static class ServiceCollectionExtensions
     /// 
     /// Services are registered in the following order:
     /// <list type="number">
-    /// <item><description>Controllers - ASP.NET Core MVC controllers</description></item>
     /// <item><description>API Versioning - URL-based versioning support</description></item>
     /// <item><description>Rate Limiting - Throttling policies for API protection</description></item>
+    /// <item><description>Request Timeouts - Timeout policies for long-running requests</description></item>
     /// <item><description>OpenAPI - Swagger documentation generation</description></item>
-    /// <item><description>Application Services - Domain-specific services and handlers</description></item>
+    /// <item><description>Application Services - Domain-specific services, handlers, and AWS integrations</description></item>
     /// <item><description>Health Checks - Liveness and readiness probes</description></item>
-    /// <item><description>CORS - Cross-origin resource sharing policies</description></item>
     /// <item><description>Validators - FluentValidation validators for request DTOs</description></item>
+    /// <item><description>JSON Options - Source-generated serialization configuration</description></item>
     /// </list>
     /// 
     /// This method is called from Program.cs:
@@ -310,7 +313,7 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Registers application-specific services including exception handlers, validators, 
-    /// and crash report processing services.
+    /// crash report processing services, and AWS integrations.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <returns>The service collection for method chaining.</returns>
@@ -338,16 +341,58 @@ public static class ServiceCollectionExtensions
     /// <description>Server-side sanitization of crash reports to redact file paths and usernames (defense-in-depth)</description>
     /// </item>
     /// <item>
+    /// <term>AWS S3 Service (Singleton)</term>
+    /// <description>Amazon S3 client for cloud object storage operations. Configured via AWS SDK
+    /// configuration (environment variables, IAM roles, or AWS CLI credentials)</description>
+    /// </item>
+    /// <item>
     /// <term>Crash Report Storage Service (Scoped)</term>
-    /// <description>Default implementation is <see cref="NullCrashReportStorageService"/> (Null Object Pattern).
-    /// Replace with a concrete implementation for actual persistence (database, file system, cloud storage)</description>
+    /// <description>Implementation is <see cref="S3CrashReportStorageService"/> which persists crash reports
+    /// to Amazon S3 for long-term storage, analysis, and archival. Crash reports are stored as JSON documents
+    /// with metadata tags for searching and filtering.</description>
     /// </item>
     /// </list>
     /// 
     /// <para>
+    /// <b>AWS S3 Configuration:</b>
+    /// </para>
+    /// The AWS SDK is configured using standard AWS credential providers in the following order:
+    /// <list type="number">
+    /// <item><description><b>Environment variables</b>: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION</description></item>
+    /// <item><description><b>Shared credentials file</b>: ~/.aws/credentials (for local development)</description></item>
+    /// <item><description><b>IAM role</b>: EC2 instance profile or ECS task role (for AWS-hosted applications)</description></item>
+    /// <item><description><b>AWS SSO</b>: Single sign-on credentials (aws sso login)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>S3 Crash Report Storage:</b>
+    /// </para>
+    /// Crash reports are stored in S3 with the following characteristics:
+    /// <list type="bullet">
+    /// <item><description><b>Bucket</b>: Configured in appsettings.json or environment variables</description></item>
+    /// <item><description><b>Key format</b>: crash-reports/{appName}/{version}/{timestamp}-{guid}.json</description></item>
+    /// <item><description><b>Content type</b>: application/json</description></item>
+    /// <item><description><b>Server-side encryption</b>: AES-256 (SSE-S3) by default</description></item>
+    /// <item><description><b>Storage class</b>: STANDARD with lifecycle policies for archival/deletion</description></item>
+    /// <item><description><b>Tags</b>: Application name, version, environment, timestamp for filtering</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Service Lifetimes:</b>
+    /// </para>
     /// Most services are registered with <b>Scoped</b> lifetime, meaning a new instance is created
     /// per HTTP request. This ensures proper isolation and prevents state leaking between requests.
+    /// The AWS S3 client is registered as <b>Singleton</b> for connection pooling and optimal performance.
+    /// 
+    /// <para>
+    /// <b>Local Development:</b>
     /// </para>
+    /// For local testing without AWS credentials, consider using:
+    /// <list type="bullet">
+    /// <item><description><b>LocalStack</b>: Local AWS service emulator (runs S3 in Docker)</description></item>
+    /// <item><description><b>AWS CLI credentials</b>: Configure with 'aws configure' for development account</description></item>
+    /// <item><description><b>Null Object Pattern</b>: Swap to <see cref="NullCrashReportStorageService"/> in test environments</description></item>
+    /// </list>
     /// </remarks>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
@@ -366,8 +411,8 @@ public static class ServiceCollectionExtensions
         // Register crash report sanitizer for defense-in-depth privacy protection
         services.AddScoped<ICrashReportSanitizer, CrashReportSanitizer>();
 
-        // Register Null Object Pattern storage service (replace with real implementation for production)
-        services.AddScoped<ICrashReportStorageService, NullCrashReportStorageService>();
+        services.AddAWSService<IAmazonS3>();
+        services.AddScoped<ICrashReportStorageService, S3CrashReportStorageService>();
 
         return services;
     }

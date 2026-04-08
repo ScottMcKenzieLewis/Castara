@@ -1,5 +1,6 @@
 ﻿using Castara.Api.Diagnostics.Services;
 using Castara.Web.Api.Dtos.Diagnostics.Requests;
+using Castara.Web.Api.Dtos.Diagnostics.Responses;
 using Castara.Web.Api.Services.Diagnostics;
 using NUlid;
 
@@ -46,7 +47,7 @@ public sealed class NullCrashReportStorageService : ICrashReportStorageService
     /// <param name="cancellationToken">Cancellation token (not used in this implementation).</param>
     /// <returns>
     /// A task that represents the synchronous operation. The task result contains a
-    /// <see cref="StoreCrashReportResult"/> with status "accepted-noop" indicating the report
+    /// <see cref="StoreCrashReportResultDto"/> with status "accepted-noop" indicating the report
     /// was received but not stored.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is <see langword="null"/>.</exception>
@@ -65,7 +66,7 @@ public sealed class NullCrashReportStorageService : ICrashReportStorageService
     /// intentionally disabled.
     /// </para>
     /// </remarks>
-    public Task<StoreCrashReportResult> StoreAsync(
+    public Task<StoreCrashReportResultDto> StoreAsync(
         SubmitCrashReportRequest request,
         CancellationToken cancellationToken)
     {
@@ -78,7 +79,7 @@ public sealed class NullCrashReportStorageService : ICrashReportStorageService
         var incidentId = $"cr_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}_{Ulid.NewUlid()}";
 
         // Return result indicating the report was accepted but not stored
-        var result = new StoreCrashReportResult(
+        var result = new StoreCrashReportResultDto(
             IncidentId: incidentId,
             ReceivedAtUtc: DateTimeOffset.UtcNow,
             Status: "accepted-noop");
