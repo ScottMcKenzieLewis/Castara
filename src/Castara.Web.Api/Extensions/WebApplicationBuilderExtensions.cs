@@ -1,4 +1,5 @@
 ﻿using Castara.Api.Configuration;
+using Castara.Web.Api.Services.Diagnostics;
 using Serilog;
 using Serilog.Formatting.Json;
 
@@ -16,6 +17,9 @@ namespace Castara.Web.Api.Extensions;
 /// <item><description>Structured logging with Serilog</description></item>
 /// <item><description>Configuration-driven log setup from appsettings.json</description></item>
 /// <item><description>Log enrichment with contextual properties</description></item>
+/// <item><description>Kestrel web server security settings</description></item>
+/// <item><description>Crash report ingestion authentication options</description></item>
+/// <item><description>AWS S3 crash report storage configuration</description></item>
 /// </list>
 /// 
 /// These extensions complement <see cref="ServiceCollectionExtensions"/> (service registration)
@@ -377,6 +381,200 @@ public static class WebApplicationBuilderExtensions
         // Makes options available via IOptions<CrashReportIngestionOptions> in DI container
         builder.Services.Configure<CrashReportIngestionOptions>(
             builder.Configuration.GetSection(CrashReportIngestionOptions.SectionName));
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers and binds AWS S3 crash report storage configuration options from appsettings.json.
+    /// </summary>
+    /// <param name="builder">The web application builder to configure.</param>
+    /// <returns>The web application builder for method chaining.</returns>
+    /// <remarks>
+    /// This method configures the <see cref="S3CrashReportStorageOptions"/> by binding values from
+    /// the "CrashReportStorage" section of appsettings.json, making them available throughout
+    /// the application via dependency injection.
+    /// 
+    /// <para>
+    /// <b>Configuration structure (appsettings.json):</b>
+    /// </para>
+    /// <code>
+    /// "CrashReportStorage": {
+    ///   "BucketName": "castara-crash-reports",
+    ///   "KeyPrefix": "crash-reports/",
+    ///   "Region": "us-east-1"
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Configuration properties:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item>
+    /// <term>BucketName (string, required)</term>
+    /// <description>Name of the S3 bucket where crash reports will be stored.
+    /// Must be a valid S3 bucket name (3-63 characters, lowercase, no underscores).
+    /// The bucket must exist and the application must have PutObject permissions.</description>
+    /// </item>
+    /// <item>
+    /// <term>KeyPrefix (string, optional)</term>
+    /// <description>Prefix for S3 object keys to organize crash reports within the bucket.
+    /// Default: "crash-reports/". Allows multiple applications to share the same bucket
+    /// with different prefixes. Should end with a forward slash for proper path organization.</description>
+    /// </item>
+    /// <item>
+    /// <term>Region (string, optional)</term>
+    /// <description>AWS region for the S3 bucket (e.g., "us-east-1", "eu-west-1").
+    /// If not specified, uses the default region from AWS SDK configuration
+    /// (environment variables, IAM role metadata, or ~/.aws/config).</description>
+    /// </item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>S3 object key format:</b>
+    /// </para>
+    /// Crash reports are stored with the following key structure:
+    /// <code>
+    /// {KeyPrefix}{AppName}/{Version}/{Timestamp:yyyyMMdd}/{Guid}.json
+    /// 
+    /// Example:
+    /// crash-reports/Castara/1.0.0/20260408/a1b2c3d4-e5f6-7890-abcd-ef1234567890.json
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Usage in services:</b>
+    /// </para>
+    /// <code>
+    /// public class S3CrashReportStorageService
+    /// {
+    ///     public S3CrashReportStorageService(
+    ///         IOptions&lt;S3CrashReportStorageOptions&gt; options)
+    ///     {
+    ///         var config = options.Value;
+    ///         var bucketName = config.BucketName;
+    ///         var keyPrefix = config.KeyPrefix ?? "crash-reports/";
+    ///     }
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>AWS permissions required:</b>
+    /// </para>
+    /// The application's IAM role or user must have the following S3 permissions:
+    /// <list type="bullet">
+    /// <item><description><b>s3:PutObject</b>: Upload crash reports to the bucket</description></item>
+    /// <item><description><b>s3:PutObjectTagging</b>: Add metadata tags to crash reports (optional)</description></item>
+    /// <item><description><b>s3:GetObject</b>: Retrieve crash reports for analysis (optional, not used by API)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Example IAM policy:</b>
+    /// </para>
+    /// <code>
+    /// {
+    ///   "Version": "2012-10-17",
+    ///   "Statement": [
+    ///     {
+    ///       "Effect": "Allow",
+    ///       "Action": [
+    ///         "s3:PutObject",
+    ///         "s3:PutObjectTagging"
+    ///       ],
+    ///       "Resource": "arn:aws:s3:::castara-crash-reports/crash-reports/*"
+    ///     }
+    ///   ]
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Environment-specific configuration:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Development</b>: appsettings.Development.json - Local bucket or LocalStack endpoint</description></item>
+    /// <item><description><b>Staging</b>: appsettings.Staging.json - Separate staging bucket for testing</description></item>
+    /// <item><description><b>Production</b>: Environment variables override appsettings.json - Production bucket name</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>S3 bucket best practices:</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description><b>Encryption</b>: Enable default encryption (SSE-S3 or SSE-KMS) on the bucket</description></item>
+    /// <item><description><b>Versioning</b>: Enable versioning for accidental deletion protection</description></item>
+    /// <item><description><b>Lifecycle policies</b>: Transition to Glacier after 90 days, delete after 1 year</description></item>
+    /// <item><description><b>Access logging</b>: Enable S3 access logging for audit trails</description></item>
+    /// <item><description><b>Block public access</b>: Ensure all public access is blocked</description></item>
+    /// <item><description><b>Cross-region replication</b>: Enable for disaster recovery (optional)</description></item>
+    /// </list>
+    /// 
+    /// <para>
+    /// <b>Example lifecycle policy:</b>
+    /// </para>
+    /// <code>
+    /// {
+    ///   "Rules": [
+    ///     {
+    ///       "Id": "Archive crash reports",
+    ///       "Status": "Enabled",
+    ///       "Filter": { "Prefix": "crash-reports/" },
+    ///       "Transitions": [
+    ///         { "Days": 90, "StorageClass": "GLACIER" }
+    ///       ],
+    ///       "Expiration": { "Days": 365 }
+    ///     }
+    ///   ]
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Local development with LocalStack:</b>
+    /// </para>
+    /// For local testing without AWS account:
+    /// <code>
+    /// // docker-compose.yml
+    /// services:
+    ///   localstack:
+    ///     image: localstack/localstack
+    ///     ports:
+    ///       - "4566:4566"
+    ///     environment:
+    ///       - SERVICES=s3
+    ///       
+    /// // appsettings.Development.json
+    /// "CrashReportStorage": {
+    ///   "BucketName": "local-crash-reports",
+    ///   "KeyPrefix": "crash-reports/",
+    ///   "ServiceURL": "http://localhost:4566"
+    /// }
+    /// </code>
+    /// 
+    /// <para>
+    /// <b>Configuration validation:</b>
+    /// </para>
+    /// The <see cref="S3CrashReportStorageService"/> validates configuration at runtime:
+    /// <list type="bullet">
+    /// <item><description>BucketName must not be null or empty</description></item>
+    /// <item><description>BucketName must be a valid S3 bucket name format</description></item>
+    /// <item><description>Region must be a valid AWS region identifier (if specified)</description></item>
+    /// </list>
+    /// 
+    /// Missing or invalid configuration results in an exception during service initialization,
+    /// ensuring fail-fast behavior rather than silent failures during crash report uploads.
+    /// 
+    /// This method is called from Program.cs before service registration:
+    /// <code>
+    /// builder.AddCrashReportStorageOptions();
+    /// </code>
+    /// 
+    /// This ensures S3 configuration is available to the <see cref="S3CrashReportStorageService"/>
+    /// when it is instantiated during dependency injection.
+    /// </remarks>
+    public static WebApplicationBuilder AddCrashReportStorageOptions(this WebApplicationBuilder builder)
+    {
+        // Bind the "CrashReportStorage" configuration section to S3CrashReportStorageOptions
+        // Makes options available via IOptions<S3CrashReportStorageOptions> in DI container
+        builder.Services.Configure<S3CrashReportStorageOptions>(
+            builder.Configuration.GetSection(S3CrashReportStorageOptions.SectionName));
 
         return builder;
     }

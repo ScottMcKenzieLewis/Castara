@@ -29,6 +29,8 @@ builder.ConfigureRequestHeadersTimeout();
 
 builder.AddCrashReportIngestionOptions();
 
+builder.AddCrashReportStorageOptions();
+
 //// Register application services (DI container configuration)
 //// Includes: Validators, mappers, AutoMapper, FluentValidation, etc.
 //// See: ServiceCollectionExtensions.cs for service registration details
