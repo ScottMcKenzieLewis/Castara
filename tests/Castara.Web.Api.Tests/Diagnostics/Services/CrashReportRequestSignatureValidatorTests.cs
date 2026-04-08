@@ -2,57 +2,103 @@
 using System.Text;
 using Castara.Api.Configuration;
 using Castara.Api.Services.Diagnostics;
+using Castara.Web.Api.Infrastructure;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Moq;
+using Xunit;
 
 namespace Castara.Api.Tests.Services.Diagnostics;
 
 public sealed class CrashReportRequestSignatureValidatorTests
 {
+    private readonly Mock<ILogger<CrashReportRequestSignatureValidator>> _loggerMock = new();
+    private readonly Mock<IClock> _clockMock = new();
+
     [Fact]
-    public async Task IsValidAsync_ShouldReturnTrue_WhenHeadersAndSignatureAreValid()
+    public void Constructor_ShouldThrow_WhenOptionsIsNull()
     {
-        var secret = "super-secret-key";
-        var keyId = "castara-wpf-v1";
-        var body = """{"report":{"reportId":"abc123"}}""";
-        var timestamp = DateTimeOffset.UtcNow.ToString("O");
+        Action act = () => new CrashReportRequestSignatureValidator(
+            options: null!,
+            _loggerMock.Object,
+            _clockMock.Object);
 
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [keyId] = secret
-            }
-        });
-
-        var request = CreateRequest(body);
-        var signature = ComputeSignature(secret, $"{timestamp}\n{body}");
-
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = keyId;
-        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
-        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
-
-        var result = await sut.IsValidAsync(request, CancellationToken.None);
-
-        result.Should().BeTrue();
-        request.Body.Position.Should().Be(0);
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("options");
     }
 
     [Fact]
-    public async Task IsValidAsync_ShouldReturnFalse_WhenRequiredHeadersAreMissing()
+    public void Constructor_ShouldThrow_WhenClockIsNull()
     {
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["castara-wpf-v1"] = "super-secret-key"
-            }
-        });
+        Action act = () => new CrashReportRequestSignatureValidator(
+            Options.Create(CreateOptions()),
+            _loggerMock.Object,
+            clock: null!);
 
-        var request = CreateRequest("""{"report":{"reportId":"abc123"}}""");
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("clock");
+    }
+
+    [Fact]
+    public void Constructor_ShouldNotThrow_WhenLoggerIsNull()
+    {
+        Action act = () => new CrashReportRequestSignatureValidator(
+            Options.Create(CreateOptions()),
+            logger: null!,
+            _clockMock.Object);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldThrow_WhenRequestIsNull()
+    {
+        var sut = CreateSut();
+
+        Func<Task> act = async () => await sut.IsValidAsync(null!, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("request");
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnFalse_WhenKeyIdHeaderIsMissing()
+    {
+        var sut = CreateSut();
+        var request = CreateRequest("{\"a\":1}");
+
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = FixedNow.ToString("O");
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "ABC123";
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnFalse_WhenTimestampHeaderIsMissing()
+    {
+        var sut = CreateSut();
+        var request = CreateRequest("{\"a\":1}");
+
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "ABC123";
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnFalse_WhenSignatureHeaderIsMissing()
+    {
+        var sut = CreateSut();
+        var request = CreateRequest("{\"a\":1}");
+
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = FixedNow.ToString("O");
 
         var result = await sut.IsValidAsync(request, CancellationToken.None);
 
@@ -62,22 +108,15 @@ public sealed class CrashReportRequestSignatureValidatorTests
     [Fact]
     public async Task IsValidAsync_ShouldReturnFalse_WhenKeyIdIsUnknown()
     {
-        var body = """{"report":{"reportId":"abc123"}}""";
-        var timestamp = DateTimeOffset.UtcNow.ToString("O");
-
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["some-other-key"] = "super-secret-key"
-            }
-        });
+        var sut = CreateSut();
+        var body = "{\"a\":1}";
+        var timestamp = FixedNow.ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
 
         var request = CreateRequest(body);
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "castara-wpf-v1";
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "unknown-key";
         request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
-        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "ABC123";
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
 
         var result = await sut.IsValidAsync(request, CancellationToken.None);
 
@@ -85,21 +124,36 @@ public sealed class CrashReportRequestSignatureValidatorTests
     }
 
     [Fact]
-    public async Task IsValidAsync_ShouldReturnFalse_WhenTimestampIsInvalid()
+    public async Task IsValidAsync_ShouldReturnFalse_WhenConfiguredKeyIsBlank()
     {
-        var body = """{"report":{"reportId":"abc123"}}""";
-
-        var sut = CreateSut(new CrashReportIngestionOptions
+        var options = new CrashReportIngestionOptions
         {
             AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
+            HmacKeys = new Dictionary<string, string>
             {
-                ["castara-wpf-v1"] = "super-secret-key"
+                ["test-key"] = "   "
             }
-        });
+        };
 
-        var request = CreateRequest(body);
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "castara-wpf-v1";
+        var sut = CreateSut(options);
+        var request = CreateRequest("{\"a\":1}");
+
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = FixedNow.ToString("O");
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "IGNORED";
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnFalse_WhenTimestampCannotBeParsed()
+    {
+        var sut = CreateSut();
+        var request = CreateRequest("{\"a\":1}");
+
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
         request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = "not-a-timestamp";
         request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "ABC123";
 
@@ -111,54 +165,104 @@ public sealed class CrashReportRequestSignatureValidatorTests
     [Fact]
     public async Task IsValidAsync_ShouldReturnFalse_WhenTimestampIsTooOld()
     {
-        var secret = "super-secret-key";
-        var keyId = "castara-wpf-v1";
-        var body = """{"report":{"reportId":"abc123"}}""";
-        var timestamp = DateTimeOffset.UtcNow.AddMinutes(-10).ToString("O");
-
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [keyId] = secret
-            }
-        });
+        var sut = CreateSut();
+        var body = "{\"a\":1}";
+        var timestamp = FixedNow.AddMinutes(-6).ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
 
         var request = CreateRequest(body);
-        var signature = ComputeSignature(secret, $"{timestamp}\n{body}");
-
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = keyId;
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
         request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
         request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
 
         var result = await sut.IsValidAsync(request, CancellationToken.None);
 
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnFalse_WhenTimestampIsTooFarInFuture()
+    {
+        var sut = CreateSut();
+        var body = "{\"a\":1}";
+        var timestamp = FixedNow.AddMinutes(6).ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnTrue_WhenTimestampIsExactlyAtLowerBound()
+    {
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.AddMinutes(-5).ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnTrue_WhenTimestampIsExactlyAtUpperBound()
+    {
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.AddMinutes(5).ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldReturnTrue_WhenHeadersTimestampAndSignatureAreValid()
+    {
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeTrue();
     }
 
     [Fact]
     public async Task IsValidAsync_ShouldReturnFalse_WhenSignatureDoesNotMatch()
     {
-        var secret = "super-secret-key";
-        var keyId = "castara-wpf-v1";
-        var body = """{"report":{"reportId":"abc123"}}""";
-        var timestamp = DateTimeOffset.UtcNow.ToString("O");
-
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [keyId] = secret
-            }
-        });
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.ToString("O");
 
         var request = CreateRequest(body);
-
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = keyId;
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
         request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
-        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "DEADBEEF";
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = "BAD_SIGNATURE";
 
         var result = await sut.IsValidAsync(request, CancellationToken.None);
 
@@ -166,38 +270,100 @@ public sealed class CrashReportRequestSignatureValidatorTests
     }
 
     [Fact]
-    public async Task IsValidAsync_ShouldReturnFalse_WhenBodyIsModifiedAfterSigning()
+    public async Task IsValidAsync_ShouldTreatSignatureComparisonAsCaseSensitive()
     {
-        var secret = "super-secret-key";
-        var keyId = "castara-wpf-v1";
-        var originalBody = """{"report":{"reportId":"abc123"}}""";
-        var actualBody = """{"report":{"reportId":"xyz999"}}""";
-        var timestamp = DateTimeOffset.UtcNow.ToString("O");
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.ToString("O");
+        var validUppercaseSignature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+        var lowercaseSignature = validUppercaseSignature.ToLowerInvariant();
 
-        var sut = CreateSut(new CrashReportIngestionOptions
-        {
-            AllowedClockSkewMinutes = 5,
-            HmacKeys = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [keyId] = secret
-            }
-        });
-
-        var request = CreateRequest(actualBody);
-        var signature = ComputeSignature(secret, $"{timestamp}\n{originalBody}");
-
-        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = keyId;
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
         request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
-        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = lowercaseSignature;
 
         var result = await sut.IsValidAsync(request, CancellationToken.None);
 
         result.Should().BeFalse();
     }
 
-    private static CrashReportRequestSignatureValidator CreateSut(CrashReportIngestionOptions options)
+    [Fact]
+    public async Task IsValidAsync_ShouldResetBodyPosition_AfterReading()
     {
-        return new CrashReportRequestSignatureValidator(Options.Create(options));
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestamp = FixedNow.ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestamp}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestamp;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeTrue();
+        request.Body.Position.Should().Be(0);
+
+        using var reader = new StreamReader(
+            request.Body,
+            Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: false,
+            leaveOpen: true);
+
+        var rereadBody = await reader.ReadToEndAsync();
+
+        rereadBody.Should().Be(body);
+    }
+
+    [Fact]
+    public async Task IsValidAsync_ShouldUseExactTimestampHeaderText_WhenComputingSignature()
+    {
+        var sut = CreateSut();
+        var body = "{\"reportId\":\"abc123\"}";
+        var timestampText = FixedNow.ToString("O");
+        var signature = ComputeSignature("secret-123", $"{timestampText}\n{body}");
+
+        var request = CreateRequest(body);
+        request.Headers[CrashReportRequestSignatureValidator.KeyIdHeaderName] = "test-key";
+        request.Headers[CrashReportRequestSignatureValidator.TimestampHeaderName] = timestampText;
+        request.Headers[CrashReportRequestSignatureValidator.SignatureHeaderName] = signature;
+
+        var result = await sut.IsValidAsync(request, CancellationToken.None);
+
+        result.Should().BeTrue();
+    }
+
+    private CrashReportRequestSignatureValidator CreateSut(
+        CrashReportIngestionOptions? options = null,
+        DateTimeOffset? now = null)
+    {
+        options ??= CreateOptions();
+
+        _clockMock
+            .Setup(x => x.UtcNow)
+            .Returns(now ?? FixedNow);
+
+        return new CrashReportRequestSignatureValidator(
+            Options.Create(options),
+            _loggerMock.Object,
+            _clockMock.Object);
+    }
+
+    private static readonly DateTimeOffset FixedNow =
+        new(2026, 4, 8, 12, 0, 0, TimeSpan.Zero);
+
+    private static CrashReportIngestionOptions CreateOptions()
+    {
+        return new CrashReportIngestionOptions
+        {
+            AllowedClockSkewMinutes = 5,
+            HmacKeys = new Dictionary<string, string>
+            {
+                ["test-key"] = "secret-123"
+            }
+        };
     }
 
     private static HttpRequest CreateRequest(string body)
@@ -208,7 +374,6 @@ public sealed class CrashReportRequestSignatureValidatorTests
         context.Request.Body = new MemoryStream(bytes);
         context.Request.ContentLength = bytes.Length;
         context.Request.ContentType = "application/json";
-        context.Request.Method = HttpMethods.Post;
 
         return context.Request;
     }

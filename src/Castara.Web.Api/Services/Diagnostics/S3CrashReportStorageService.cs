@@ -161,7 +161,7 @@ namespace Castara.Web.Api.Services.Diagnostics;
 /// <item><description><b>Lambda functions</b>: Automated processing and alerting</description></item>
 /// </list>
 /// 
-/// Service registration occurs in <see cref="ServiceCollectionExtensions.AddApplicationServices"/>
+/// Service registration occurs in <c>ServiceCollectionExtensions.AddApplicationServices</c>
 /// with <b>Scoped</b> lifetime (one instance per HTTP request).
 /// </remarks>
 public sealed class S3CrashReportStorageService : ICrashReportStorageService
@@ -458,7 +458,7 @@ public sealed class S3CrashReportStorageService : ICrashReportStorageService
     /// <param name="clientReportId">The optional client-provided report identifier.</param>
     /// <returns>
     /// The complete S3 object key in the format:
-    /// <c>{keyPrefix}{YYYY}/{MM}/{DD}/{IncidentId}_{sanitizedClientReportId}.json</c>
+    /// <c>{keyPrefix}{YYYY}/{MM}/{DD}/{incidentId}_{sanitizedClientReportId}.json</c>
     /// </returns>
     /// <remarks>
     /// <para>

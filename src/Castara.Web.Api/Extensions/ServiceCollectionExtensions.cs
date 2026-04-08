@@ -10,6 +10,7 @@ using Castara.Diagnostics.Api.Services.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics;
 using Castara.Web.Api.Dtos.Diagnostics.Requests;
 using Castara.Web.Api.Dtos.Validation;
+using Castara.Web.Api.Infrastructure;
 using Castara.Web.Api.Services.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -413,6 +414,8 @@ public static class ServiceCollectionExtensions
 
         services.AddAWSService<IAmazonS3>();
         services.AddScoped<ICrashReportStorageService, S3CrashReportStorageService>();
+
+        services.AddSingleton<IClock, SystemClock>();
 
         return services;
     }

@@ -1,5 +1,6 @@
 ﻿using Castara.Api.Configuration;
 using Castara.Api.Middleware.Diagnostics;
+using Castara.Web.Api.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Globalization;
@@ -49,19 +50,16 @@ public sealed class CrashReportRequestSignatureValidator
 
     private readonly ILogger<CrashReportRequestSignatureValidator> _logger;
 
+    private readonly IClock _clock;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CrashReportRequestSignatureValidator"/> class.
-    /// </summary>
-    /// <param name="options">Configuration options containing HMAC keys and clock skew settings.</param>
-    /// <param name="logger">Logger instance for diagnostic output.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <see langword="null"/>.</exception>
     public CrashReportRequestSignatureValidator(
         IOptions<CrashReportIngestionOptions> options,
-        ILogger<CrashReportRequestSignatureValidator> logger)
+        ILogger<CrashReportRequestSignatureValidator> logger,
+        IClock clock)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? NullLogger<CrashReportRequestSignatureValidator>.Instance;
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
     /// <summary>
@@ -134,7 +132,7 @@ public sealed class CrashReportRequestSignatureValidator
         }
 
         // Validate timestamp is within allowed clock skew window (prevents replay attacks)
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var skew = TimeSpan.FromMinutes(_options.AllowedClockSkewMinutes);
 
         if (timestamp < now - skew || timestamp > now + skew)

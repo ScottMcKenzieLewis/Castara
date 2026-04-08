@@ -1,4 +1,6 @@
-﻿namespace Castara.Web.Api.Services.Diagnostics;
+﻿using Castara.Web.Api.Extensions;
+
+namespace Castara.Web.Api.Services.Diagnostics;
 
 /// <summary>
 /// Configuration options for AWS S3 crash report storage.

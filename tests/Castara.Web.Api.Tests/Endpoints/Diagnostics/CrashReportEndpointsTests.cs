@@ -161,7 +161,7 @@ public sealed class CrashReportEndpointsTests
             .ReturnsAsync(validationResult);
 
         // Replace StoreCrashReportResult with your actual return type.
-        var storeResult = new StoreCrashReportResult(
+        var storeResult = new StoreCrashReportResultDto(
             Status: "accepted",
             IncidentId: "INC-12345",
             ReceivedAtUtc: new DateTimeOffset(2026, 04, 03, 12, 00, 00, TimeSpan.Zero));
