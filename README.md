@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/a326756b-e2e7-4335-81e8-a604c9eebeab
 ### Crash Reporting & Diagnostics
 <img width="887" height="633" alt="image" src="https://github.com/user-attachments/assets/d4289e10-c8dc-4e08-88f1-ee14acdcc00b" />
 
-Castara includes a comprehensive crash reporting system that captures detailed diagnostic information when unexpected errors occur:
+Castara includes a comprehensive crash reporting system that captures detailed diagnostic information when unexpected errors occur and stores it both locally and in the cloud for analysis:
 
 #### Features
 - **Automatic Crash Report Generation**: Unhandled exceptions are automatically captured and converted into structured crash reports
@@ -49,25 +49,11 @@ Castara includes a comprehensive crash reporting system that captures detailed d
   - Application state snapshot (theme, active view, casting profile, unit system, current composition values)
   - Recent log entries (last 200 entries with timestamps, levels, categories, and messages)
 - **JSON Format**: Reports are saved as human-readable, structured JSON files for easy analysis
-- **Persistent Storage**: Reports are stored in `%LocalAppData%\Castara\CrashReports` with timestamped filenames
+- **Dual Storage**:
+  - **Local Storage**: Reports are stored in `%LocalAppData%\Castara\CrashReports` with timestamped filenames
+  - **Cloud Storage**: Reports are uploaded to AWS S3 for centralized analysis and long-term archival
 - **User Control**: Interactive dialog allows users to review crash details and choose whether to save locally and/or send to the diagnostic server
 - **Optional Upload**: Crash report upload to the diagnostic server can be disabled in `appsettings.json` by setting `CrashReportUpload.Enabled` to `false`
-
-#### Configuration
-
-Crash report upload behavior can be configured in `appsettings.json`:
-
-```json
-{
-  "CrashReportUpload": {
-    "Enabled": true,              // Set to false to disable crash report upload
-    "BaseUrl": "https://...",     // Diagnostic server endpoint
-    "KeyId": "castara",           // Authentication key identifier
-    "HmacKey": "...",             // HMAC-SHA256 shared secret
-    "TimeoutSeconds": 10          // Upload timeout in seconds
-  }
-}
-```
 
 When upload is disabled (`Enabled: false`), users will only see the option to save crash reports locally. This is useful for:
 - **Privacy-sensitive environments** where external data transmission is restricted
@@ -75,38 +61,39 @@ When upload is disabled (`Enabled: false`), users will only see the option to sa
 - **Development/testing** scenarios where server upload is not needed
 - **Organizations with internal-only diagnostics** workflows
 
-#### Path Sanitization Example
+##### Server Configuration (Castara.Web.Api)
 
-The crash reporting system protects user privacy by redacting personal directory paths while preserving critical debugging information:
-
-**Original exception message:**
+The diagnostic API's S3 storage can be configured in `appsettings.json`:
 ```
-Error at C:\Users\ScottLewis\OneDrive\git\Castara\src\ViewModels\ShellViewModel.cs:line 142
+{ "CrashReportUpload": 
+    { 
+        "Enabled": true, // Set to false to disable crash report upload "BaseUrl": "https://...",     
+        "KeyId": "castara",           
+        "HmacKey": "...",             
+        "TimeoutSeconds": 10
+    } 
+}
 ```
 
-**Sanitized in crash report:**
+#### AWS S3 Storage
+
+The diagnostic API stores crash reports in Amazon S3 for:
+- **Centralized Analysis**: All crash reports from all users in one searchable location
+- **Long-term Archival**: Durable, scalable storage with configurable lifecycle policies
+- **Analytics Integration**: Compatible with AWS Athena, Glue, QuickSight for trend analysis
+- **Security**: Server-side encryption (AES256 or KMS) with IAM-controlled access
+
+**S3 object key structure:**
+
 ```
-Error at [redacted-path]\ShellViewModel.cs:line 142
+{version}/{timestamp:yyyy/MM/dd}/{unique-id}.json
 ```
 
-This ensures that crash reports can be safely shared for debugging without exposing sensitive user information like usernames or personal directory structures.
+- **version**: Application version (e.g., `1.0.0`)
+- **timestamp**: UTC timestamp of the crash (e.g., `2023-10-05T14-48-00Z`)
+- **unique-id**: Randomly generated identifier for the crash report file
 
-#### Report Structure
-
-Crash reports include the following information:
-- **Report ID**: Unique identifier for tracking (e.g., `abc123def456`)
-- **Timestamp**: UTC timestamp when the crash occurred
-- **Source**: Origin of the crash (e.g., `DispatcherUnhandledException`)
-- **Exception**: Primary exception with type, message, and stack trace
-- **Inner Exceptions**: Flattened collection of all nested exceptions
-- **Context**: Application state including:
-  - Current theme (Light/Dark)
-  - Active view (CalculationsViewModel, etc.)
-  - Selected casting profile
-  - Unit system (Standard/American)
-  - Current composition values (C, Si, Mn, P, S)
-  - Section parameters (thickness, cooling rate)
-- **Recent Logs**: Last 200 log entries with full context
+Reports are uploaded in real-time as files are generated, ensuring immediate availability for analysis. The cloud storage integration is transparent to the user and can be disabled in the application settings.
 
 ---
 
@@ -554,7 +541,3 @@ Professional engineering judgment and proper testing remain essential for all pr
 ---
 
 *Educational and Reference Tool - Not for Production Use Without Professional Engineering Validation*
-
-
-
-
