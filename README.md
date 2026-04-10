@@ -61,6 +61,33 @@ When upload is disabled (`Enabled: false`), users will only see the option to sa
 - **Development/testing** scenarios where server upload is not needed
 - **Organizations with internal-only diagnostics** workflows
 
+```mermaid
+flowchart LR
+    subgraph Client["Client"]
+        A["Castara WPF Client<br/>Crash reporting UI"]
+    end
+
+    subgraph AWS["AWS"]
+        subgraph Runtime["Application Runtime"]
+            C["Amazon ECR<br/>castara-api image"]
+            B["App Runner Service<br/>Castara.Web.Api"]
+            E["IAM Instance Role<br/>write-only S3 policy"]
+        end
+
+        subgraph Storage["Storage and Notifications"]
+            D["S3 Bucket<br/>castara-crash-reports"]
+            F["SNS Topic<br/>castara-crash-report-alerts"]
+            G["Email Subscription<br/>operator inbox"]
+        end
+    end
+
+    A -->|"HTTPS REST POST<br/>crash report payload"| B
+    C -.->|"Deploys container image"| B
+    E -.->|"Allows s3:PutObject<br/>reports/*"| B
+    B -->|"Writes crash report JSON"| D
+    D -->|"ObjectCreated event<br/>prefix filter: reports/"| F
+    F -->|"Email alert"| G
+```
 ##### Server Configuration (Castara.Web.Api)
 
 The diagnostic API's S3 storage can be configured in `appsettings.json`:
